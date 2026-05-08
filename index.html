@@ -262,7 +262,10 @@ input[type=date].exc-inp::-webkit-calendar-picker-indicator{filter:invert(.6)}
       <div class="ssb-dot" id="ssbDot"></div>
       <span id="ssbText">구글 시트와 동기화하면 학생 앱에 설정이 반영됩니다</span>
     </div>
-    <button class="btn-sync-all" id="btnSyncAll" onclick="pushConfig()">☁️ 설정 동기화</button>
+    <div style="display:flex;gap:6px">
+      <button class="btn-sync-all" id="btnTestConn" onclick="testConnection()" style="background:rgba(6,214,160,.2);border:1px solid rgba(6,214,160,.3);color:var(--ok)">🔌 연결 테스트</button>
+      <button class="btn-sync-all" id="btnSyncAll" onclick="pushConfig()">☁️ 설정 동기화</button>
+    </div>
   </div>
 
   <div class="nav">
@@ -318,12 +321,28 @@ input[type=date].exc-inp::-webkit-calendar-picker-indicator{filter:invert(.6)}
     <!-- GAS URL -->
     <div class="sset">
       <h4>🔗 구글 시트 연동</h4>
+
+      <!-- 배포 단계 안내 -->
+      <div style="background:rgba(78,168,222,.07);border:1px solid rgba(78,168,222,.2);border-radius:var(--Rs);padding:11px 13px;margin-bottom:12px;font-size:.7rem;color:var(--dim);line-height:1.8">
+        <div style="font-weight:700;color:var(--accent);margin-bottom:6px">📋 최초 설정 순서</div>
+        <div>① 아래 스크립트를 복사</div>
+        <div>② 구글 시트 → 확장 프로그램 → Apps Script → 붙여넣기 → 저장</div>
+        <div>③ 배포 → <strong style="color:#fff">새 배포</strong> → 유형: 웹 앱 → 실행계정: <strong style="color:#fff">나</strong> → 액세스: <strong style="color:#fff">모든 사용자</strong></div>
+        <div>④ 생성된 URL 아래에 입력 → <strong style="color:var(--ok)">🔌 연결 테스트</strong></div>
+        <div style="margin-top:6px;color:rgba(255,255,255,.4)">⚠️ 코드 수정 시 기존 배포를 선택하여 <strong style="color:#fff">버전 업데이트</strong></div>
+      </div>
+
       <div class="fl">Google Apps Script 웹 앱 URL</div>
       <input class="fi" type="url" id="cfgGas" placeholder="https://script.google.com/macros/s/...">
-      <div style="font-size:.68rem;color:var(--dim);line-height:1.6;margin-bottom:8px">
-        📌 아래 GAS 스크립트를 배포 후 URL을 입력하세요.<br>
-        <strong style="color:var(--accent)">⚡ 설정 동기화</strong> 버튼을 누르면 학생 앱에 모든 설정이 자동 반영됩니다.
+
+      <!-- 연결 테스트 결과 -->
+      <div id="connTestResult" style="display:none;background:var(--card2);border-radius:var(--Rs);padding:10px 13px;margin-bottom:11px;font-size:.75rem;line-height:1.7"></div>
+
+      <div style="display:flex;gap:7px;margin-bottom:12px">
+        <button onclick="testConnectionFromSettings()" style="flex:1;background:linear-gradient(135deg,rgba(6,214,160,.2),rgba(6,214,160,.08));border:1px solid rgba(6,214,160,.35);color:var(--ok);border-radius:var(--Rs);padding:10px;font-family:'Noto Sans KR',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .2s" id="btnTestSettings">🔌 연결 테스트</button>
+        <button onclick="saveAndSync()" style="flex:1;background:linear-gradient(135deg,var(--accent),#3d9fd0);border:none;color:#fff;border-radius:var(--Rs);padding:10px;font-family:'Noto Sans KR',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .2s">💾 저장 후 동기화</button>
       </div>
+
       <div class="code-block" id="gasCode"></div>
       <div style="display:flex;gap:8px;margin-bottom:4px">
         <button onclick="copyGas()" style="background:var(--card2);border:1px solid var(--border);color:var(--dim);border-radius:var(--Rs);padding:7px 14px;font-family:'Noto Sans KR',sans-serif;font-size:.72rem;cursor:pointer">📋 스크립트 복사</button>
@@ -450,122 +469,186 @@ input[type=date].exc-inp::-webkit-calendar-picker-indicator{filter:invert(.6)}
 /* ══════════════════════════════════════════════
    GAS SCRIPT
 ══════════════════════════════════════════════ */
-const GAS_SCRIPT = `// ── 학생 기록 저장 / 대리 제출 ──
+const GAS_SCRIPT = `// ════════════════════════════════════════
+// 미션 체크 — GAS 서버 (v3)
+// 배포: 웹앱 / 실행 계정: 나 / 접근: 모든 사용자
+// ════════════════════════════════════════
+
+// 학생 기록 시트 이름을 구분하는 함수
+// Config, 통계 등 내부 시트는 제외
+function isDataSheet(name) {
+  var skip = ['Config', '설정', '통계', 'README', 'Sheet1', '시트1'];
+  return skip.indexOf(name) === -1;
+}
+
+// ── POST: 기록 저장 / 설정 저장 ──
 function doPost(e) {
   try {
     var d = JSON.parse(e.postData.contents);
     var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    // 설정 저장: {action:'saveConfig', config:{...}}
+    // 설정 저장
     if (d.action === 'saveConfig') {
       var cfg = ss.getSheetByName('Config') || ss.insertSheet('Config');
       cfg.clearContents();
-      Object.entries(d.config).forEach(function(entry) {
-        cfg.appendRow([entry[0], typeof entry[1] === 'object'
-          ? JSON.stringify(entry[1]) : String(entry[1])]);
+      cfg.appendRow(['key', 'value']);
+      Object.keys(d.config).forEach(function(key) {
+        var val = d.config[key];
+        cfg.appendRow([key, typeof val === 'object' ? JSON.stringify(val) : String(val)]);
       });
-      return ok();
+      return respond({success: true});
     }
 
-    // 학생/대리 제출
-    var sheetName = d.className || '전체';
+    // 학생/대리 기록 저장 (학반별 시트)
+    var sheetName = (d.className || '전체').replace(/\//g, '-');
     var sheet = ss.getSheetByName(sheetName);
     if (!sheet) {
       sheet = ss.insertSheet(sheetName);
       sheet.appendRow(['날짜','이름','학반','바퀴수','완료여부','제출시각','제출자']);
-      sheet.getRange(1,1,1,7).setFontWeight('bold').setBackground('#f5f5f5');
+      sheet.getRange(1,1,1,7).setFontWeight('bold').setBackground('#e8eaf0');
     }
+    var laps = parseInt(d.laps) || 0;
+    var req  = parseInt(d.lapsRequired) || 3;
+
+    // 기존 행 찾기 (같은 날짜 + 이름)
     var vals = sheet.getDataRange().getValues();
     var rowIdx = -1;
     for (var i = 1; i < vals.length; i++) {
-      if (vals[i][0] === d.date && vals[i][1] === d.name) { rowIdx = i+1; break; }
+      var rowDate = vals[i][0] instanceof Date
+        ? Utilities.formatDate(vals[i][0], 'Asia/Seoul', 'yyyy-MM-dd')
+        : String(vals[i][0]);
+      if (rowDate === d.date && String(vals[i][1]) === String(d.name)) {
+        rowIdx = i + 1; break;
+      }
     }
-    var laps = parseInt(d.laps)||0, req = parseInt(d.lapsRequired)||3;
-    var row = [d.date, d.name, d.className||'', laps,
-               laps>=req ? '✓ 완료' : laps+'/'+req+' 바퀴',
-               d.submittedAt||'', d.isProxy ? '교사 대리' : '학생'];
-    if (rowIdx > 0) sheet.getRange(rowIdx,1,1,7).setValues([row]);
-    else { sheet.appendRow(row); rowIdx = sheet.getLastRow(); }
-    if (laps>=req) sheet.getRange(rowIdx,1,1,7).setBackground('#e8f5e9');
-    else if (laps>0) sheet.getRange(rowIdx,1,1,7).setBackground('#fff9e6');
-    else sheet.getRange(rowIdx,1,1,7).setBackground(null);
-    return ok();
-  } catch(err) { return fail(err); }
 
-  function ok() {
-    return ContentService.createTextOutput(JSON.stringify({success:true}))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-  function fail(e) {
-    return ContentService.createTextOutput(JSON.stringify({success:false,error:e.toString()}))
-      .setMimeType(ContentService.MimeType.JSON);
+    var rowData = [
+      d.date, d.name, d.className || '',
+      laps,
+      laps >= req ? '완료' : laps + '/' + req,
+      d.submittedAt || '',
+      d.isProxy ? '교사대리' : '학생'
+    ];
+
+    if (rowIdx > 0) {
+      sheet.getRange(rowIdx, 1, 1, 7).setValues([rowData]);
+    } else {
+      sheet.appendRow(rowData);
+      rowIdx = sheet.getLastRow();
+    }
+    // 색상
+    if      (laps >= req) sheet.getRange(rowIdx,1,1,7).setBackground('#c8e6c9');
+    else if (laps >  0  ) sheet.getRange(rowIdx,1,1,7).setBackground('#fff9c4');
+    else                  sheet.getRange(rowIdx,1,1,7).setBackground(null);
+
+    return respond({success: true});
+
+  } catch(err) {
+    return respond({success: false, error: err.toString()});
   }
 }
 
-// ── 조회 API ──
+// ── GET: 조회 API ──
 function doGet(e) {
-  var p = e && e.parameter ? e.parameter : {};
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var action = p.action||'';
+  var p      = (e && e.parameter) ? e.parameter : {};
+  var action = p.action || '';
+  var ss     = SpreadsheetApp.getActiveSpreadsheet();
 
-  // 설정 불러오기
-  if (action === 'config') {
-    var cfgSheet = ss.getSheetByName('Config');
-    if (!cfgSheet) return j({success:false,error:'Config not set'});
-    var vals = cfgSheet.getDataRange().getValues();
-    var config = {};
-    vals.forEach(function(r) {
-      var val = r[1];
-      if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{'))) {
-        try { val = JSON.parse(val); } catch(e) {}
+  try {
+    // ── 설정 읽기
+    if (action === 'config') {
+      var cfgSheet = ss.getSheetByName('Config');
+      if (!cfgSheet) return respond({success: true, config: {}});
+      var rows = cfgSheet.getDataRange().getValues();
+      var config = {};
+      // 첫 행이 헤더(key/value)면 건너뜀
+      var start = (rows.length > 0 && rows[0][0] === 'key') ? 1 : 0;
+      for (var i = start; i < rows.length; i++) {
+        var k = String(rows[i][0]);
+        var v = rows[i][1];
+        if (!k) continue;
+        if (typeof v === 'string' && (v.charAt(0) === '[' || v.charAt(0) === '{')) {
+          try { v = JSON.parse(v); } catch(_) {}
+        }
+        config[k] = v;
       }
-      config[r[0]] = val;
-    });
-    return j({success:true, config:config});
-  }
+      return respond({success: true, config: config});
+    }
 
-  // 오늘 현황
-  if (action === 'today') {
-    var date = p.date||'';
-    var rows = [];
-    ss.getSheets().forEach(function(sh) {
-      sh.getDataRange().getValues().slice(1).forEach(function(r) {
-        if (String(r[0]) === date)
-          rows.push({name:String(r[1]),className:String(r[2]),
-            laps:parseInt(r[3])||0,submittedAt:String(r[5])||'',
-            isProxy:String(r[6])==='교사 대리'});
+    // ── 오늘 현황
+    if (action === 'today') {
+      var targetDate = p.date || '';
+      var rows = [];
+      ss.getSheets().forEach(function(sh) {
+        if (!isDataSheet(sh.getName())) return;
+        var data = sh.getDataRange().getValues();
+        for (var i = 1; i < data.length; i++) {
+          var r = data[i];
+          var rowDate = r[0] instanceof Date
+            ? Utilities.formatDate(r[0], 'Asia/Seoul', 'yyyy-MM-dd')
+            : String(r[0]);
+          if (rowDate !== targetDate) continue;
+          var name = String(r[1]);
+          var cls  = String(r[2]);
+          if (!name || name === '이름') continue;
+          rows.push({
+            name:        name,
+            className:   cls,
+            laps:        parseInt(r[3]) || 0,
+            submittedAt: String(r[5]) || '',
+            isProxy:     String(r[6]) === '교사대리'
+          });
+        }
       });
-    });
-    return j({success:true, data:rows});
-  }
+      return respond({success: true, data: rows, date: targetDate});
+    }
 
-  // 순위표
-  if (action === 'leaderboard') {
-    var month = p.month||'', req = parseInt(p.lapsRequired)||3;
-    var students = {};
-    ss.getSheets().forEach(function(sh) {
-      sh.getDataRange().getValues().slice(1).forEach(function(r) {
-        var dt = String(r[0]);
-        if (month && !dt.startsWith(month)) return;
-        var name=String(r[1]), cls=String(r[2]), laps=parseInt(r[3])||0;
-        if (!name || name==='이름') return;
-        var key = name+'||'+cls;
-        if (!students[key]) students[key]={name:name,className:cls,completeDays:0,totalLaps:0};
-        students[key].totalLaps += laps;
-        if (laps >= req) students[key].completeDays++;
+    // ── 월별 순위표
+    if (action === 'leaderboard') {
+      var month = p.month || '';
+      var req   = parseInt(p.lapsRequired) || 3;
+      var students = {};
+      ss.getSheets().forEach(function(sh) {
+        if (!isDataSheet(sh.getName())) return;
+        var data = sh.getDataRange().getValues();
+        for (var i = 1; i < data.length; i++) {
+          var r = data[i];
+          var rowDate = r[0] instanceof Date
+            ? Utilities.formatDate(r[0], 'Asia/Seoul', 'yyyy-MM-dd')
+            : String(r[0]);
+          if (month && rowDate.indexOf(month) !== 0) continue;
+          var name = String(r[1]);
+          var cls  = String(r[2]);
+          if (!name || name === '이름') continue;
+          var laps = parseInt(r[3]) || 0;
+          var key  = name + '||' + cls;
+          if (!students[key]) students[key] = {name:name, className:cls, completeDays:0, totalLaps:0};
+          students[key].totalLaps += laps;
+          if (laps >= req) students[key].completeDays++;
+        }
       });
-    });
-    var result = Object.values(students)
-      .sort(function(a,b){return b.completeDays-a.completeDays||b.totalLaps-a.totalLaps;});
-    return j({success:true, data:result, month:month});
-  }
+      var result = Object.values(students).sort(function(a,b) {
+        return b.completeDays - a.completeDays || b.totalLaps - a.totalLaps;
+      });
+      return respond({success: true, data: result, month: month});
+    }
 
-  return j({success:true, message:'Teacher API Ready'});
+    // 연결 테스트
+    if (action === 'ping') {
+      return respond({success: true, message: 'pong', timestamp: new Date().toISOString()});
+    }
 
-  function j(obj) {
-    return ContentService.createTextOutput(JSON.stringify(obj))
-      .setMimeType(ContentService.MimeType.JSON);
+    return respond({success: true, message: 'GAS API Ready'});
+
+  } catch(err) {
+    return respond({success: false, error: err.toString()});
   }
+}
+
+function respond(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
 }`;
 
 /* ══════════════════════════════════════════════
@@ -718,6 +801,99 @@ async function pushConfig(){
 }
 
 /* ══════════════════════════════════════════════
+   GAS 통신 헬퍼
+   GAS는 script.google.com → script.googleusercontent.com 리다이렉트를 함.
+   fetch()는 기본적으로 redirect:follow 이므로 정상 동작하지만,
+   타임아웃과 에러 메시지를 강화함.
+══════════════════════════════════════════════ */
+async function gasGet(url, params, timeoutMs) {
+  if (!url) throw new Error('GAS URL이 설정되지 않았습니다. 설정 탭에서 URL을 입력하세요.');
+  timeoutMs = timeoutMs || 15000;
+
+  // 쿼리스트링 조합
+  const qs = Object.entries(params).map(([k,v]) => k + '=' + encodeURIComponent(v)).join('&');
+  const fullUrl = url + (url.includes('?') ? '&' : '?') + qs + '&t=' + Date.now(); // 캐시 방지
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(fullUrl, {
+      method: 'GET',
+      redirect: 'follow',
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+
+    if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + res.statusText);
+
+    const text = await res.text();
+    let json;
+    try { json = JSON.parse(text); }
+    catch(e) { throw new Error('응답이 JSON 형식이 아닙니다. GAS 배포 상태를 확인하세요.\n응답 앞부분: ' + text.substring(0, 100)); }
+
+    if (!json.success) throw new Error('GAS 오류: ' + (json.error || '알 수 없는 오류'));
+    return json;
+
+  } catch(e) {
+    clearTimeout(timer);
+    if (e.name === 'AbortError') throw new Error('연결 시간 초과 (15초). 인터넷 연결 또는 GAS URL을 확인하세요.');
+    throw e;
+  }
+}
+
+/* ── 연결 테스트 ── */
+async function testConnection() {
+  const c = lc();
+  if (!c.gasUrl) { toast('⚠️ GAS URL을 먼저 설정하세요', 'warn'); return; }
+  setSsbState('syn');
+  document.getElementById('ssbText').textContent = '연결 테스트 중…';
+  try {
+    const json = await gasGet(c.gasUrl, { action: 'ping' });
+    setSsbState('ok');
+    document.getElementById('ssbText').textContent = '✅ 연결 성공! 구글 시트와 정상 연결됨';
+    toast('✅ GAS 연결 성공!');
+    setTimeout(() => setSsbState('idle'), 3000);
+  } catch(e) {
+    setSsbState('err');
+    document.getElementById('ssbText').textContent = '❌ ' + e.message;
+    toast('❌ 연결 실패', 'warn');
+  }
+}
+
+async function testConnectionFromSettings() {
+  const url = document.getElementById('cfgGas').value.trim();
+  if (!url) { toast('⚠️ URL을 입력하세요', 'warn'); return; }
+  const btn = document.getElementById('btnTestSettings');
+  btn.textContent = '테스트 중…'; btn.disabled = true;
+  const resultEl = document.getElementById('connTestResult');
+  resultEl.style.display = 'block';
+  resultEl.style.color = 'var(--dim)';
+  resultEl.innerHTML = '⏳ 구글 시트에 연결 중…';
+
+  try {
+    const json = await gasGet(url, { action: 'ping' });
+    resultEl.style.color = 'var(--ok)';
+    resultEl.innerHTML = '✅ <strong>연결 성공!</strong><br>GAS 서버가 정상 응답했습니다.<br><span style="font-size:.65rem;opacity:.7">응답시각: ' + (json.timestamp || new Date().toISOString()) + '</span>';
+    toast('✅ 연결 성공! 설정을 저장하세요.');
+  } catch(e) {
+    resultEl.style.color = 'var(--err)';
+    resultEl.innerHTML = '❌ <strong>연결 실패</strong><br>' + e.message.replace(/\n/g, '<br>') + '<br><br>' +
+      '<span style="font-size:.65rem;color:var(--a2)">확인사항:<br>' +
+      '• URL이 /exec 로 끝나는지 확인<br>' +
+      '• Apps Script → 배포 → 액세스: 모든 사용자<br>' +
+      '• 코드 수정 후 버전 업데이트 배포 필요</span>';
+  } finally {
+    btn.textContent = '🔌 연결 테스트'; btn.disabled = false;
+  }
+}
+
+async function saveAndSync() {
+  saveCfg();
+  await pushConfig();
+}
+
+/* ══════════════════════════════════════════════
    TODAY
 ══════════════════════════════════════════════ */
 let todayFilter='__all__', todayData=[];
@@ -732,15 +908,18 @@ function initToday(){
 
 async function fetchToday(){
   const c=lc();
-  if(!c.gasUrl){toast('⚠️ GAS URL을 설정하세요','warn');return;}
   const btn=document.getElementById('rfBtn');btn.classList.add('sp');
+  document.getElementById('stuTable').innerHTML='<div class="loading-r"><div class="spn"></div> 데이터 불러오는 중…</div>';
   try{
-    const res=await fetch(`${c.gasUrl}?action=today&date=${getToday()}&lapsRequired=${c.lapsRequired||3}`);
-    const json=await res.json();
-    if(!json.success) throw new Error(json.error);
-    todayData=json.data||[];
-    renderTodayStats();renderTodayTable();toast('✅ 오늘 데이터 업데이트 완료');
-  }catch(e){toast('❌ 불러오기 실패: '+e.message,'warn');}
+    const json = await gasGet(c.gasUrl, { action:'today', date:getToday(), lapsRequired:c.lapsRequired||3 });
+    todayData = json.data || [];
+    renderTodayStats(); renderTodayTable();
+    toast('✅ 오늘 데이터 ' + todayData.length + '건 로드 완료');
+  } catch(e) {
+    document.getElementById('stuTable').innerHTML =
+      '<div class="empty-s" style="color:var(--err)">❌ ' + e.message + '</div>';
+    toast('❌ 불러오기 실패', 'warn');
+  }
   finally{btn.classList.remove('sp');}
 }
 
@@ -797,17 +976,23 @@ function cm(d){vm.m+=d;if(vm.m>12){vm.m=1;vm.y++;}if(vm.m<1){vm.m=12;vm.y--;}ini
 
 async function fetchMonthly(){
   const c=lc();
-  if(!c.gasUrl){toast('⚠️ GAS URL을 설정하세요','warn');return;}
   const btn=document.getElementById('mRfBtn');btn.classList.add('sp');
   const month=`${vm.y}-${pad(vm.m)}`,req=c.lapsRequired||3,target=getTarget(c,vm.y,vm.m);
   const thresh=(c.achieveThreshold||100)/100;
+  document.getElementById('rankList').innerHTML='<div class="loading-r"><div class="spn"></div> 순위표 불러오는 중…</div>';
   try{
-    const res=await fetch(`${c.gasUrl}?action=leaderboard&month=${month}&lapsRequired=${req}`);
-    const json=await res.json();
-    if(!json.success) throw new Error(json.error);
-    mData=(json.data||[]).map(r=>({...r,pct:target>0?Math.min(100,Math.round(r.completeDays/target*100)):0,achieved:target>0&&r.completeDays>=target*thresh}));
-    renderMonthly();toast('✅ 순위표 업데이트 완료');
-  }catch(e){toast('❌ '+e.message,'warn');}
+    const json = await gasGet(c.gasUrl, { action:'leaderboard', month, lapsRequired:req });
+    mData=(json.data||[]).map(r=>({...r,
+      pct:target>0?Math.min(100,Math.round(r.completeDays/target*100)):0,
+      achieved:target>0&&r.completeDays>=target*thresh
+    }));
+    renderMonthly();
+    toast('✅ 순위표 ' + mData.length + '명 로드 완료');
+  }catch(e){
+    document.getElementById('rankList').innerHTML=
+      '<div class="empty-s" style="color:var(--err)">❌ ' + e.message + '</div>';
+    toast('❌ '+e.message,'warn');
+  }
   finally{btn.classList.remove('sp');}
 }
 
