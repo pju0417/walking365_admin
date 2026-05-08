@@ -263,7 +263,8 @@ input[type=date].exc-inp::-webkit-calendar-picker-indicator{filter:invert(.6)}
       <span id="ssbText">구글 시트와 동기화하면 학생 앱에 설정이 반영됩니다</span>
     </div>
     <div style="display:flex;gap:6px">
-      <button class="btn-sync-all" id="btnTestConn" onclick="testConnection()" style="background:rgba(6,214,160,.2);border:1px solid rgba(6,214,160,.3);color:var(--ok)">🔌 연결 테스트</button>
+      <button class="btn-sync-all" id="btnGlobalRefresh" onclick="globalRefresh()" style="background:rgba(6,214,160,.18);border:1px solid rgba(6,214,160,.35);color:var(--ok)">🔄 전체 새로고침</button>
+      <button class="btn-sync-all" id="btnTestConn" onclick="testConnection()" style="background:rgba(78,168,222,.15);border:1px solid rgba(78,168,222,.3);color:var(--accent)">🔌 연결 테스트</button>
       <button class="btn-sync-all" id="btnSyncAll" onclick="pushConfig()">☁️ 설정 동기화</button>
     </div>
   </div>
@@ -281,7 +282,7 @@ input[type=date].exc-inp::-webkit-calendar-picker-indicator{filter:invert(.6)}
   <div class="view active" id="view-today">
     <div class="top-bar">
       <div class="tb-l"><div class="td" id="tdDate">…</div><div class="tm" id="tdMission">미션: …</div></div>
-      <button class="btn-rf" id="rfBtn" onclick="fetchToday()"><span class="ri">🔄</span> 새로고침</button>
+      <div style="font-size:.68rem;color:rgba(255,255,255,.7)">상단 🔄 전체 새로고침으로 업데이트</div>
     </div>
     <div class="prog-card">
       <div class="pc-top"><div class="pc-lbl">전체 완료 현황</div><div class="pc-cnt" id="pcCnt">—</div></div>
@@ -298,7 +299,6 @@ input[type=date].exc-inp::-webkit-calendar-picker-indicator{filter:invert(.6)}
       <button class="mnav" onclick="cm(-1)">◀</button>
       <div class="m-lbl" id="mLbl">…</div>
       <button class="mnav" onclick="cm(1)">▶</button>
-      <button class="btn-rf" id="mRfBtn" onclick="fetchMonthly()"><span class="ri">🔄</span></button>
     </div>
     <div class="stat-row" id="mStats"></div>
     <div class="cls-filter" id="mCls"></div>
@@ -465,69 +465,86 @@ input[type=date].exc-inp::-webkit-calendar-picker-indicator{filter:invert(.6)}
 <div class="toast" id="toast"></div>
 <div class="wm">made by 박선생</div>
 
-<script>
-/* ══════════════════════════════════════════════
-   GAS SCRIPT
-══════════════════════════════════════════════ */
-const GAS_SCRIPT = `// ════════════════════════════════════════
-// 미션 체크 — GAS 서버 (v3)
-// 배포: 웹앱 / 실행 계정: 나 / 접근: 모든 사용자
+<!-- GAS 스크립트 저장소 (textarea 방식 — 이스케이프 문제 없음) -->
+<textarea id="gasStore" style="display:none;visibility:hidden">// ════════════════════════════════════════
+// 미션 체크 — GAS 서버 스크립트
+// ────────────────────────────────────────
+// 배포 방법:
+//   Apps Script 편집기에 이 코드 전체를 붙여넣기
+//   → 배포 → 새 배포(최초) 또는 배포 관리(업데이트)
+//   → 유형: 웹 앱 / 실행 계정: 나 / 액세스: 모든 사용자
 // ════════════════════════════════════════
 
-// 학생 기록 시트 이름을 구분하는 함수
-// Config, 통계 등 내부 시트는 제외
+// ── 내부 관리 시트 제외 (학생 데이터 시트만 읽음)
 function isDataSheet(name) {
   var skip = ['Config', '설정', '통계', 'README', 'Sheet1', '시트1'];
   return skip.indexOf(name) === -1;
 }
 
-// ── POST: 기록 저장 / 설정 저장 ──
+// ── POST: 기록 저장 / 설정 저장
 function doPost(e) {
   try {
-    var d = JSON.parse(e.postData.contents);
+    var d  = JSON.parse(e.postData.contents);
     var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    // 설정 저장
+    // [1] 설정 저장 (교사 앱 → 구글 시트)
     if (d.action === 'saveConfig') {
       var cfg = ss.getSheetByName('Config') || ss.insertSheet('Config');
       cfg.clearContents();
       cfg.appendRow(['key', 'value']);
-      Object.keys(d.config).forEach(function(key) {
-        var val = d.config[key];
-        cfg.appendRow([key, typeof val === 'object' ? JSON.stringify(val) : String(val)]);
-      });
-      return respond({success: true});
+      var keys = Object.keys(d.config);
+      for (var ki = 0; ki < keys.length; ki++) {
+        var k   = keys[ki];
+        var val = d.config[k];
+        cfg.appendRow([k, typeof val === 'object' ? JSON.stringify(val) : String(val)]);
+      }
+      return respond({ success: true });
     }
 
-    // 학생/대리 기록 저장 (학반별 시트)
-    var sheetName = (d.className || '전체').replace(/\//g, '-');
-    var sheet = ss.getSheetByName(sheetName);
+    // [2] 학생/대리 기록 저장 (학반별 시트)
+    var rawClass   = d.className || '전체';
+    var sheetName  = rawClass.split('/').join('-'); // 슬래시 제거 (정규식 불사용)
+    var sheet      = ss.getSheetByName(sheetName);
+
     if (!sheet) {
       sheet = ss.insertSheet(sheetName);
-      sheet.appendRow(['날짜','이름','학반','바퀴수','완료여부','제출시각','제출자']);
-      sheet.getRange(1,1,1,7).setFontWeight('bold').setBackground('#e8eaf0');
+      sheet.appendRow(['날짜', '이름', '학반', '바퀴수', '완료여부', '제출시각', '제출자']);
+      sheet.getRange(1, 1, 1, 7).setFontWeight('bold').setBackground('#e8eaf0');
     }
-    var laps = parseInt(d.laps) || 0;
+
+    // parseInt()||0 은 0을 falsy로 처리하므로 명시적 처리
+    var laps = parseInt(d.laps);
+    if (isNaN(laps)) laps = 0;
     var req  = parseInt(d.lapsRequired) || 3;
 
-    // 기존 행 찾기 (같은 날짜 + 이름)
-    var vals = sheet.getDataRange().getValues();
+    // 같은 날짜 + 이름 행 있으면 업데이트
+    var vals   = sheet.getDataRange().getValues();
     var rowIdx = -1;
-    for (var i = 1; i < vals.length; i++) {
-      var rowDate = vals[i][0] instanceof Date
-        ? Utilities.formatDate(vals[i][0], 'Asia/Seoul', 'yyyy-MM-dd')
-        : String(vals[i][0]);
-      if (rowDate === d.date && String(vals[i][1]) === String(d.name)) {
-        rowIdx = i + 1; break;
+    for (var ri = 1; ri < vals.length; ri++) {
+      var rowDate = vals[ri][0] instanceof Date
+        ? Utilities.formatDate(vals[ri][0], 'Asia/Seoul', 'yyyy-MM-dd')
+        : String(vals[ri][0]);
+      if (rowDate === d.date && String(vals[ri][1]) === String(d.name)) {
+        rowIdx = ri + 1;
+        break;
       }
     }
 
+    var completionLabel = laps >= req ? '완료'
+      : laps === 0 ? '기록없음'
+      : laps + '/' + req;
+    var submitterLabel = d.isProxy ? '교사대리'
+      : d.isUpdate ? '학생(수정)'
+      : '학생';
+
     var rowData = [
-      d.date, d.name, d.className || '',
+      d.date,
+      d.name,
+      d.className || '',
       laps,
-      laps >= req ? '완료' : laps + '/' + req,
+      completionLabel,
       d.submittedAt || '',
-      d.isProxy ? '교사대리' : '학생'
+      submitterLabel
     ];
 
     if (rowIdx > 0) {
@@ -536,120 +553,149 @@ function doPost(e) {
       sheet.appendRow(rowData);
       rowIdx = sheet.getLastRow();
     }
+
     // 색상
-    if      (laps >= req) sheet.getRange(rowIdx,1,1,7).setBackground('#c8e6c9');
-    else if (laps >  0  ) sheet.getRange(rowIdx,1,1,7).setBackground('#fff9c4');
-    else                  sheet.getRange(rowIdx,1,1,7).setBackground(null);
+    var bg = laps >= req ? '#c8e6c9' : (laps > 0 ? '#fff9c4' : null);
+    if (bg) {
+      sheet.getRange(rowIdx, 1, 1, 7).setBackground(bg);
+    } else {
+      sheet.getRange(rowIdx, 1, 1, 7).setBackground(null);
+    }
 
-    return respond({success: true});
+    return respond({ success: true });
 
-  } catch(err) {
-    return respond({success: false, error: err.toString()});
+  } catch (err) {
+    return respond({ success: false, error: err.toString() });
   }
 }
 
-// ── GET: 조회 API ──
+// ── GET: 조회 API
 function doGet(e) {
   var p      = (e && e.parameter) ? e.parameter : {};
   var action = p.action || '';
   var ss     = SpreadsheetApp.getActiveSpreadsheet();
 
   try {
-    // ── 설정 읽기
+
+    // [1] 설정 읽기 (?action=config)
     if (action === 'config') {
       var cfgSheet = ss.getSheetByName('Config');
-      if (!cfgSheet) return respond({success: true, config: {}});
-      var rows = cfgSheet.getDataRange().getValues();
+      if (!cfgSheet) return respond({ success: true, config: {} });
+      var rows   = cfgSheet.getDataRange().getValues();
       var config = {};
-      // 첫 행이 헤더(key/value)면 건너뜀
-      var start = (rows.length > 0 && rows[0][0] === 'key') ? 1 : 0;
-      for (var i = start; i < rows.length; i++) {
-        var k = String(rows[i][0]);
-        var v = rows[i][1];
-        if (!k) continue;
-        if (typeof v === 'string' && (v.charAt(0) === '[' || v.charAt(0) === '{')) {
-          try { v = JSON.parse(v); } catch(_) {}
+      // 첫 행이 헤더(key / value)면 건너뜀
+      var startRow = (rows.length > 0 && String(rows[0][0]) === 'key') ? 1 : 0;
+      for (var ci = startRow; ci < rows.length; ci++) {
+        var ck = String(rows[ci][0]);
+        var cv = rows[ci][1];
+        if (!ck) continue;
+        // JSON 문자열이면 파싱
+        if (typeof cv === 'string' && cv.length > 0) {
+          var first = cv.charAt(0);
+          if (first === '[' || first === '{') {
+            try { cv = JSON.parse(cv); } catch (_) {}
+          }
         }
-        config[k] = v;
+        config[ck] = cv;
       }
-      return respond({success: true, config: config});
+      return respond({ success: true, config: config });
     }
 
-    // ── 오늘 현황
+    // [2] 오늘 현황 (?action=today&date=YYYY-MM-DD&lapsRequired=3)
     if (action === 'today') {
       var targetDate = p.date || '';
-      var rows = [];
-      ss.getSheets().forEach(function(sh) {
-        if (!isDataSheet(sh.getName())) return;
+      var todayRows  = [];
+      var sheets     = ss.getSheets();
+      for (var si = 0; si < sheets.length; si++) {
+        var sh = sheets[si];
+        if (!isDataSheet(sh.getName())) continue;
         var data = sh.getDataRange().getValues();
-        for (var i = 1; i < data.length; i++) {
-          var r = data[i];
+        for (var di = 1; di < data.length; di++) {
+          var r       = data[di];
           var rowDate = r[0] instanceof Date
             ? Utilities.formatDate(r[0], 'Asia/Seoul', 'yyyy-MM-dd')
             : String(r[0]);
           if (rowDate !== targetDate) continue;
-          var name = String(r[1]);
-          var cls  = String(r[2]);
-          if (!name || name === '이름') continue;
-          rows.push({
-            name:        name,
-            className:   cls,
+          var tName = String(r[1]);
+          var tCls  = String(r[2]);
+          if (!tName || tName === '이름') continue;
+          todayRows.push({
+            name:        tName,
+            className:   tCls,
             laps:        parseInt(r[3]) || 0,
             submittedAt: String(r[5]) || '',
             isProxy:     String(r[6]) === '교사대리'
           });
         }
-      });
-      return respond({success: true, data: rows, date: targetDate});
+      }
+      return respond({ success: true, data: todayRows, date: targetDate });
     }
 
-    // ── 월별 순위표
+    // [3] 월별 순위표 (?action=leaderboard&month=YYYY-MM&lapsRequired=3)
     if (action === 'leaderboard') {
-      var month = p.month || '';
-      var req   = parseInt(p.lapsRequired) || 3;
+      var month    = p.month || '';
+      var lbReq    = parseInt(p.lapsRequired) || 3;
       var students = {};
-      ss.getSheets().forEach(function(sh) {
-        if (!isDataSheet(sh.getName())) return;
-        var data = sh.getDataRange().getValues();
-        for (var i = 1; i < data.length; i++) {
-          var r = data[i];
-          var rowDate = r[0] instanceof Date
-            ? Utilities.formatDate(r[0], 'Asia/Seoul', 'yyyy-MM-dd')
-            : String(r[0]);
-          if (month && rowDate.indexOf(month) !== 0) continue;
-          var name = String(r[1]);
-          var cls  = String(r[2]);
-          if (!name || name === '이름') continue;
-          var laps = parseInt(r[3]) || 0;
-          var key  = name + '||' + cls;
-          if (!students[key]) students[key] = {name:name, className:cls, completeDays:0, totalLaps:0};
-          students[key].totalLaps += laps;
-          if (laps >= req) students[key].completeDays++;
+      var lbSheets = ss.getSheets();
+      for (var li = 0; li < lbSheets.length; li++) {
+        var lsh = lbSheets[li];
+        if (!isDataSheet(lsh.getName())) continue;
+        var ldata = lsh.getDataRange().getValues();
+        for (var ldi = 1; ldi < ldata.length; ldi++) {
+          var lr      = ldata[ldi];
+          var lDate   = lr[0] instanceof Date
+            ? Utilities.formatDate(lr[0], 'Asia/Seoul', 'yyyy-MM-dd')
+            : String(lr[0]);
+          if (month && lDate.indexOf(month) !== 0) continue;
+          var lName = String(lr[1]);
+          var lCls  = String(lr[2]);
+          if (!lName || lName === '이름') continue;
+          var llaps = parseInt(lr[3]) || 0;
+          var lkey  = lName + '||' + lCls;
+          if (!students[lkey]) {
+            students[lkey] = { name: lName, className: lCls, completeDays: 0, totalLaps: 0 };
+          }
+          students[lkey].totalLaps += llaps;
+          if (llaps >= lbReq) students[lkey].completeDays++;
         }
+      }
+      // 정렬: 완료일 내림차순 → 총 바퀴 내림차순
+      var lbKeys   = Object.keys(students);
+      var lbResult = [];
+      for (var rk = 0; rk < lbKeys.length; rk++) {
+        lbResult.push(students[lbKeys[rk]]);
+      }
+      lbResult.sort(function (a, b) {
+        if (b.completeDays !== a.completeDays) return b.completeDays - a.completeDays;
+        return b.totalLaps - a.totalLaps;
       });
-      var result = Object.values(students).sort(function(a,b) {
-        return b.completeDays - a.completeDays || b.totalLaps - a.totalLaps;
-      });
-      return respond({success: true, data: result, month: month});
+      return respond({ success: true, data: lbResult, month: month });
     }
 
-    // 연결 테스트
+    // [4] 연결 테스트 (?action=ping)
     if (action === 'ping') {
-      return respond({success: true, message: 'pong', timestamp: new Date().toISOString()});
+      return respond({ success: true, message: 'pong', timestamp: new Date().toISOString() });
     }
 
-    return respond({success: true, message: 'GAS API Ready'});
+    return respond({ success: true, message: 'GAS API Ready' });
 
-  } catch(err) {
-    return respond({success: false, error: err.toString()});
+  } catch (err) {
+    return respond({ success: false, error: err.toString() });
   }
 }
 
+// ── 응답 헬퍼
 function respond(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
-}`;
+}
+</textarea>
+
+<script>
+/* ══════════════════════════════════════════════
+   GAS SCRIPT
+══════════════════════════════════════════════ */
 
 /* ══════════════════════════════════════════════
    DATA
@@ -751,7 +797,7 @@ function goMain(){
   const c=lc();
   document.getElementById('ahTitle').textContent=c.programName||'미션 관리자';
   document.getElementById('ahSub').textContent=c.missionName||'교사용 관리 시스템';
-  document.getElementById('gasCode').textContent=GAS_SCRIPT;
+  document.getElementById('gasCode').textContent=getGasScript();
   setSsbState(c.gasUrl?'idle':'none');
   loadCfgForm();
   document.getElementById('prxDate').value=getToday();
@@ -893,6 +939,25 @@ async function saveAndSync() {
   await pushConfig();
 }
 
+/* ── 전체 새로고침 ── */
+async function globalRefresh() {
+  const c = lc();
+  if (!c.gasUrl) { toast('⚠️ GAS URL을 먼저 설정하세요', 'warn'); return; }
+  const btn = document.getElementById('btnGlobalRefresh');
+  btn.textContent = '⏳ 새로고침 중…';
+  btn.disabled = true;
+  try {
+    // 오늘 + 이번달 데이터 동시 요청
+    await Promise.all([ fetchToday(true), fetchMonthly(true) ]);
+    toast('✅ 전체 데이터 새로고침 완료');
+  } catch(e) {
+    toast('❌ 새로고침 실패: ' + e.message, 'warn');
+  } finally {
+    btn.textContent = '🔄 전체 새로고침';
+    btn.disabled = false;
+  }
+}
+
 /* ══════════════════════════════════════════════
    TODAY
 ══════════════════════════════════════════════ */
@@ -906,21 +971,22 @@ function initToday(){
   renderTodayStats();renderTodayTable();
 }
 
-async function fetchToday(){
+async function fetchToday(silent){
   const c=lc();
-  const btn=document.getElementById('rfBtn');btn.classList.add('sp');
-  document.getElementById('stuTable').innerHTML='<div class="loading-r"><div class="spn"></div> 데이터 불러오는 중…</div>';
+  if(!silent) document.getElementById('stuTable').innerHTML='<div class="loading-r"><div class="spn"></div> 데이터 불러오는 중…</div>';
   try{
     const json = await gasGet(c.gasUrl, { action:'today', date:getToday(), lapsRequired:c.lapsRequired||3 });
     todayData = json.data || [];
     renderTodayStats(); renderTodayTable();
-    toast('✅ 오늘 데이터 ' + todayData.length + '건 로드 완료');
+    if(!silent) toast('✅ 오늘 데이터 ' + todayData.length + '건 로드 완료');
   } catch(e) {
-    document.getElementById('stuTable').innerHTML =
-      '<div class="empty-s" style="color:var(--err)">❌ ' + e.message + '</div>';
-    toast('❌ 불러오기 실패', 'warn');
+    if(!silent){
+      document.getElementById('stuTable').innerHTML =
+        '<div class="empty-s" style="color:var(--err)">❌ ' + e.message + '</div>';
+      toast('❌ 불러오기 실패', 'warn');
+    }
+    throw e;
   }
-  finally{btn.classList.remove('sp');}
 }
 
 function renderTodayStats(){
@@ -974,12 +1040,11 @@ function initMonthly(){
 }
 function cm(d){vm.m+=d;if(vm.m>12){vm.m=1;vm.y++;}if(vm.m<1){vm.m=12;vm.y--;}initMonthly();}
 
-async function fetchMonthly(){
+async function fetchMonthly(silent){
   const c=lc();
-  const btn=document.getElementById('mRfBtn');btn.classList.add('sp');
   const month=`${vm.y}-${pad(vm.m)}`,req=c.lapsRequired||3,target=getTarget(c,vm.y,vm.m);
   const thresh=(c.achieveThreshold||100)/100;
-  document.getElementById('rankList').innerHTML='<div class="loading-r"><div class="spn"></div> 순위표 불러오는 중…</div>';
+  if(!silent) document.getElementById('rankList').innerHTML='<div class="loading-r"><div class="spn"></div> 순위표 불러오는 중…</div>';
   try{
     const json = await gasGet(c.gasUrl, { action:'leaderboard', month, lapsRequired:req });
     mData=(json.data||[]).map(r=>({...r,
@@ -987,13 +1052,15 @@ async function fetchMonthly(){
       achieved:target>0&&r.completeDays>=target*thresh
     }));
     renderMonthly();
-    toast('✅ 순위표 ' + mData.length + '명 로드 완료');
+    if(!silent) toast('✅ 순위표 ' + mData.length + '명 로드 완료');
   }catch(e){
-    document.getElementById('rankList').innerHTML=
-      '<div class="empty-s" style="color:var(--err)">❌ ' + e.message + '</div>';
-    toast('❌ '+e.message,'warn');
+    if(!silent){
+      document.getElementById('rankList').innerHTML=
+        '<div class="empty-s" style="color:var(--err)">❌ ' + e.message + '</div>';
+      toast('❌ '+e.message,'warn');
+    }
+    throw e;
   }
-  finally{btn.classList.remove('sp');}
 }
 
 function renderMonthly(){
@@ -1239,7 +1306,8 @@ function buildFilter(id,classes,cur,cb){
     });
   });
 }
-function copyGas(){ navigator.clipboard.writeText(GAS_SCRIPT).then(()=>toast('✅ 스크립트 복사 완료')); }
+function getGasScript(){ return document.getElementById('gasStore').value; }
+function copyGas(){ navigator.clipboard.writeText(getGasScript()).then(()=>toast('✅ 스크립트 복사 완료')); }
 
 /* ── QR CODE GENERATION ── */
 let qrInstance = null;
@@ -1314,7 +1382,7 @@ function toast(msg,type){
 }
 
 /* ══ INIT ══ */
-document.getElementById('gasCode').textContent=GAS_SCRIPT;
+document.getElementById('gasCode').textContent=getGasScript();
 initPin();
 </script>
 </body>
