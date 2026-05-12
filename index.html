@@ -3,1351 +3,1421 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>미션 체크</title>
+<title>미션 관리자</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Bebas+Neue&display=swap');
 :root{
-  --bg:#0f1117;--surface:#1a1d27;--card:#21253a;--card2:#272c42;
-  --accent:#ff6b35;--accent2:#ffd166;--success:#06d6a0;--danger:#ef476f;--info:#4ea8de;
-  --text:#e8eaf0;--dim:#7a7f9a;--border:rgba(255,255,255,.07);
-  --R:16px;--Rs:11px;
+  --bg:#0c0e18;--surface:#141724;--card:#1c2035;--card2:#222640;
+  --accent:#4ea8de;--a2:#ffd166;--ok:#06d6a0;--err:#ef476f;--org:#ff6b35;
+  --text:#e8eaf0;--dim:#6b7299;--border:rgba(255,255,255,.07);
+  --R:14px;--Rs:10px;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
 body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
 
-/* ── LOADING ── */
-#screen-loading{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:18px;
-  background:radial-gradient(ellipse at 30% 30%,rgba(255,107,53,.07),transparent 60%),var(--bg);
+/* ══ PIN ══ */
+#scPin{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:24px;background:radial-gradient(ellipse at 30% 20%,rgba(78,168,222,.08),transparent 60%),var(--bg)}
+.pin-logo{font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:6px;color:var(--accent);margin-bottom:4px}
+.pin-title{font-family:'Bebas Neue',sans-serif;font-size:2.8rem;letter-spacing:3px;background:linear-gradient(135deg,#fff 40%,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;line-height:1;margin-bottom:36px}
+.pin-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--R);padding:26px 22px;width:100%;max-width:340px}
+.pin-lbl{font-size:.68rem;color:var(--dim);letter-spacing:1.5px;font-weight:700;text-transform:uppercase;margin-bottom:10px;text-align:center}
+.pin-dots{display:flex;justify-content:center;gap:13px;margin-bottom:22px}
+.pd{width:15px;height:15px;border-radius:50%;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.14);transition:all .2s}
+.pd.on{background:var(--accent);border-color:var(--accent);box-shadow:0 0 12px rgba(78,168,222,.5)}
+.pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.pk{background:var(--card);border:1px solid var(--border);border-radius:var(--Rs);padding:15px 8px;text-align:center;font-size:1.25rem;font-weight:700;cursor:pointer;transition:all .15s}
+.pk:hover{background:var(--card2);border-color:var(--accent)}.pk:active{transform:scale(.92)}
+.pk.del{font-size:.95rem;color:var(--dim)}.pk.ent{background:linear-gradient(135deg,var(--accent),#3d9fd0);border-color:var(--accent);color:#fff;font-size:.88rem}
+.pin-err{text-align:center;font-size:.76rem;color:var(--err);margin-top:12px;height:18px}
+.pin-hint{text-align:center;font-size:.7rem;color:var(--dim);margin-top:12px;line-height:1.5}
+
+/* ══ MAIN ══ */
+#scMain{display:none;flex-direction:column;height:100%}
+.ahdr{background:linear-gradient(135deg,var(--surface),var(--bg));border-bottom:1px solid var(--border);padding:10px 15px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.ah-l{display:flex;align-items:center;gap:9px}
+.ah-bdg{background:rgba(78,168,222,.15);border:1px solid rgba(78,168,222,.3);color:var(--accent);border-radius:5px;padding:2px 8px;font-size:.6rem;font-weight:700;letter-spacing:1px}
+.ah-title{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;color:#fff}
+.ah-sub{font-size:.6rem;color:var(--dim)}
+.btn-lock{background:rgba(239,71,111,.12);border:1px solid rgba(239,71,111,.25);color:var(--err);border-radius:7px;padding:6px 11px;font-family:'Noto Sans KR',sans-serif;font-size:.7rem;font-weight:700;cursor:pointer;transition:all .2s}
+.btn-lock:hover{background:rgba(239,71,111,.2)}
+
+/* Sync status bar */
+.sync-status-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(78,168,222,.06);border-bottom:1px solid rgba(78,168,222,.12);
+  padding:7px 15px;flex-shrink:0;
 }
-.load-logo{font-family:'Bebas Neue',sans-serif;font-size:3rem;letter-spacing:4px;color:var(--accent);text-shadow:0 0 40px rgba(255,107,53,.3)}
-.load-spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,.08);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
-.load-text{font-size:.78rem;color:var(--dim)}
-@keyframes spin{to{transform:rotate(360deg)}}
+.ssb-l{display:flex;align-items:center;gap:7px;font-size:.7rem;color:var(--dim)}
+.ssb-dot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex-shrink:0}
+.ssb-dot.ok{background:var(--ok)}.ssb-dot.syn{background:var(--a2);animation:blink .8s infinite}.ssb-dot.err{background:var(--err)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.btn-sync-all{background:linear-gradient(135deg,var(--accent),#3d9fd0);color:#fff;border:none;border-radius:20px;padding:5px 14px;font-family:'Noto Sans KR',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;transition:all .2s}
+.btn-sync-all:hover{box-shadow:0 4px 14px rgba(78,168,222,.35)}
+.btn-sync-all:disabled{background:var(--card);color:var(--dim);cursor:not-allowed}
 
-/* ── URL INPUT SCREEN ── */
-#screen-url{
-  display:none;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:24px;
-  background:radial-gradient(ellipse at 70% 70%,rgba(255,107,53,.06),transparent 60%),var(--bg);
-}
-.url-logo{font-family:'Bebas Neue',sans-serif;font-size:3.5rem;letter-spacing:4px;color:var(--accent);text-shadow:0 0 40px rgba(255,107,53,.3);margin-bottom:4px}
-.url-sub{font-size:.7rem;color:var(--dim);letter-spacing:3px;margin-bottom:40px}
-.url-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--R);padding:26px 22px;width:100%;max-width:380px}
-.u-label{font-size:.68rem;color:var(--dim);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:7px}
-.u-input{background:var(--bg);border:2px solid var(--border);border-radius:var(--Rs);padding:13px 15px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:.9rem;width:100%;outline:none;margin-bottom:16px;transition:border-color .2s}
-.u-input:focus{border-color:var(--accent)}
-.u-hint{font-size:.68rem;color:var(--dim);line-height:1.6;margin-bottom:20px}
-.btn-connect{background:linear-gradient(135deg,var(--accent),#ff8c5a);color:#fff;border:none;border-radius:var(--Rs);padding:14px;width:100%;font-family:'Noto Sans KR',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(255,107,53,.3);transition:all .2s}
-.btn-connect:hover{box-shadow:0 10px 28px rgba(255,107,53,.4)}
-.btn-connect:disabled{background:var(--card);box-shadow:none;color:var(--dim);cursor:not-allowed}
-
-/* ── SETUP SCREEN ── */
-#screen-setup{
-  display:none;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:24px;
-  background:radial-gradient(ellipse at 30% 20%,rgba(255,107,53,.07),transparent 60%),var(--bg);
-}
-.s-logo{font-family:'Bebas Neue',sans-serif;font-size:3rem;letter-spacing:3px;color:var(--accent);text-shadow:0 0 30px rgba(255,107,53,.3);margin-bottom:4px}
-.s-sub{font-size:.7rem;color:var(--dim);letter-spacing:3px;margin-bottom:36px}
-.s-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--R);padding:26px 22px;width:100%;max-width:380px}
-.s-label{font-size:.68rem;color:var(--dim);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:7px}
-.s-input{background:var(--bg);border:2px solid var(--border);border-radius:var(--Rs);padding:13px 15px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:1rem;width:100%;outline:none;margin-bottom:16px;transition:border-color .2s}
-.s-input:focus{border-color:var(--accent)}
-.s-select{background:var(--bg);border:2px solid var(--border);border-radius:var(--Rs);padding:13px 15px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:1rem;width:100%;outline:none;cursor:pointer;margin-bottom:24px;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a7f9a' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;transition:border-color .2s}
-.s-select:focus{border-color:var(--accent)}
-.btn-start{background:linear-gradient(135deg,var(--accent),#ff8c5a);color:#fff;border:none;border-radius:var(--Rs);padding:15px;width:100%;font-family:'Noto Sans KR',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(255,107,53,.3);transition:all .2s}
-.btn-start:hover{transform:translateY(-1px);box-shadow:0 12px 32px rgba(255,107,53,.4)}
-.btn-start:disabled{background:var(--card);box-shadow:none;color:var(--dim);cursor:not-allowed;transform:none}
-
-/* ── MAIN ── */
-#screen-main{display:none;flex-direction:column;height:100%}
-.hdr{background:linear-gradient(135deg,#1a1d27,var(--bg));border-bottom:1px solid var(--border);padding:11px 15px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.hdr-name{font-size:.98rem;font-weight:700;line-height:1}
-.hdr-class{font-size:.68rem;color:var(--dim);margin-top:2px}
-.hdr-btns{display:flex;gap:7px}
-.btn-h{background:var(--card);border:1px solid var(--border);color:var(--dim);border-radius:9px;width:37px;height:37px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.95rem;transition:all .2s}
-.btn-h:hover{color:var(--text);border-color:var(--accent)}
-.btn-refresh-all{background:rgba(6,214,160,.12);border:1px solid rgba(6,214,160,.28);color:var(--success);border-radius:9px;padding:0 11px;height:37px;display:flex;align-items:center;gap:5px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-size:.73rem;font-weight:700;transition:all .2s;white-space:nowrap}
-.btn-refresh-all:hover{background:rgba(6,214,160,.22);border-color:var(--success)}
-.btn-refresh-all:active{transform:scale(.95)}
-.btn-refresh-all.spin span{animation:spin .7s linear infinite}
-.btn-logout{background:rgba(239,71,111,.1);border:1px solid rgba(239,71,111,.25);color:var(--danger);border-radius:9px;padding:0 12px;height:37px;display:flex;align-items:center;gap:5px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-size:.75rem;font-weight:700;transition:all .2s;white-space:nowrap}
-.btn-logout:hover{background:rgba(239,71,111,.22);border-color:var(--danger)}
-.btn-logout:active{transform:scale(.95)}
-
-.date-bar{background:linear-gradient(90deg,var(--accent),#ff9a5c);padding:8px 15px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.date-bar .d{font-size:.8rem;font-weight:700;color:#fff}
-.date-bar .st{font-size:.7rem;color:rgba(255,255,255,.85);font-weight:600}
-
-.tabs{display:flex;background:var(--surface);border-bottom:2px solid var(--border);flex-shrink:0}
-.tab{flex:1;padding:15px 4px;background:none;border:none;color:var(--dim);font-family:'Noto Sans KR',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:4px}
-.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+/* Nav */
+.nav{display:flex;background:var(--surface);border-bottom:2px solid var(--border);flex-shrink:0}
+.nb{flex:1;padding:12px 4px;background:none;border:none;color:var(--dim);font-family:'Noto Sans KR',sans-serif;font-size:.76rem;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:4px}
+.nb.active{color:var(--accent);border-bottom-color:var(--accent)}
 
 .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.view{display:none;padding:15px 15px 100px}
+.view.active{display:block}
 
-/* ── TODAY VIEW ── */
-.today-wrap{padding:18px 15px 100px}
-.mission-card{background:var(--card);border:1px solid var(--border);border-radius:var(--R);padding:22px 18px;margin-bottom:14px;position:relative;overflow:hidden}
-.mission-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,107,53,.06),transparent);pointer-events:none}
-.mc-badge{font-size:.68rem;color:var(--accent);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px}
-.mc-name{font-size:1.05rem;font-weight:700;margin-bottom:20px}
+/* ── TODAY ── */
+.top-bar{background:linear-gradient(90deg,var(--accent),#3d9fd0);border-radius:var(--Rs);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}
+.tb-l .td{font-size:.82rem;font-weight:700;color:#fff}.tb-l .tm{font-size:.67rem;color:rgba(255,255,255,.8);margin-top:2px}
+.btn-rf{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:7px;padding:6px 12px;font-family:'Noto Sans KR',sans-serif;font-size:.7rem;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:4px}
+.btn-rf:hover{background:rgba(255,255,255,.3)}.btn-rf.sp .ri{animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-.lap-rings{display:flex;justify-content:center;gap:14px;margin-bottom:22px}
-.lr{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;transition:transform .2s cubic-bezier(.34,1.56,.64,1)}
-.lr:active{transform:scale(.9)}
-.lr svg{width:70px;height:70px}
-.r-bg{fill:rgba(255,255,255,.05);stroke:rgba(255,255,255,.1);stroke-width:3}
-.r-fill{fill:none;stroke-width:5;stroke-linecap:round;transform-origin:center;transform:rotate(-90deg);transition:stroke-dashoffset .4s cubic-bezier(.34,1.56,.64,1),stroke .3s}
-.r-num{dominant-baseline:middle;text-anchor:middle;font-size:20px;font-weight:900;transition:all .3s}
-.r-lbl{font-size:.66rem;font-weight:600;color:var(--dim);transition:color .3s}
-.lr.done .r-lbl{color:var(--success)}
+.prog-card{background:var(--card);border:1px solid var(--border);border-radius:var(--Rs);padding:13px 15px;margin-bottom:13px}
+.pc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.pc-lbl{font-size:.76rem;font-weight:600}
+.pc-cnt{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--ok)}
+.prog-bg{height:7px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--ok),#04b888);transition:width .6s}
 
-.tap-hint{text-align:center;font-size:.7rem;color:var(--dim);margin-bottom:18px;display:flex;align-items:center;justify-content:center;gap:6px}
-.btn-undo-l{display:block;text-align:center;margin-top:6px;background:none;border:none;font-family:'Noto Sans KR',sans-serif;font-size:.7rem;color:var(--danger);cursor:pointer;padding:5px;opacity:.7}
-.btn-undo-l:hover{opacity:1}
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:13px}
+.sc{background:var(--card);border:1px solid var(--border);border-radius:var(--Rs);padding:11px 8px;text-align:center}
+.sc .sv{font-family:'Bebas Neue',sans-serif;font-size:1.7rem;line-height:1}.sc .sl{font-size:.6rem;color:var(--dim);margin-top:2px}
 
-.status-bdg{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:9px;padding:10px 13px;margin-bottom:14px;font-size:.78rem}
-.sdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.sdot.wait{background:var(--dim)}.sdot.part{background:var(--accent2);animation:blink 1.5s infinite}.sdot.comp{background:var(--success)}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.cls-filter{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}
+.cf-chip{padding:5px 12px;border-radius:20px;background:var(--card);border:1px solid var(--border);color:var(--dim);font-family:'Noto Sans KR',sans-serif;font-size:.72rem;font-weight:600;cursor:pointer;transition:all .2s}
+.cf-chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 
-.btn-sub{width:100%;padding:17px;border:none;border-radius:var(--Rs);font-family:'Noto Sans KR',sans-serif;font-size:.98rem;font-weight:700;cursor:pointer;transition:all .3s cubic-bezier(.34,1.56,.64,1);letter-spacing:.2px}
-.btn-sub.idle{background:var(--card);color:var(--dim);border:2px dashed rgba(255,255,255,.1);cursor:default}
-.btn-sub.partial{background:rgba(255,107,53,.12);color:var(--accent);border:2px solid rgba(255,107,53,.35)}
-.btn-sub.complete{background:linear-gradient(135deg,var(--success),#04b888);color:#fff;box-shadow:0 8px 24px rgba(6,214,160,.35);animation:spulse 2s ease-in-out infinite}
-@keyframes spulse{0%,100%{box-shadow:0 8px 24px rgba(6,214,160,.35)}50%{box-shadow:0 12px 36px rgba(6,214,160,.55)}}
-.btn-sub.partial:active,.btn-sub.complete:active{transform:scale(.97)}
+.stu-table{background:var(--card);border:1px solid var(--border);border-radius:var(--Rs);overflow:hidden}
+.st-hdr{display:grid;grid-template-columns:1fr 72px 64px;background:var(--card2);padding:8px 13px;font-size:.65rem;color:var(--dim);font-weight:700}
+.st-row{display:grid;grid-template-columns:1fr 72px 64px;padding:10px 13px;border-top:1px solid var(--border);align-items:center;transition:background .15s}
+.st-row:hover{background:rgba(255,255,255,.02)}
+.sn{font-size:.82rem;font-weight:600}.sc2{font-size:.67rem;color:var(--dim);margin-top:1px}
+.laps-pip{display:flex;gap:3px;justify-content:center}
+.pip{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.58rem;font-weight:700}
+.pip.on1{background:var(--org);color:#fff}.pip.on2{background:var(--a2);color:#fff}.pip.on3{background:var(--ok);color:#fff}.pip.off{background:rgba(255,255,255,.08);color:var(--dim)}
+.sst{text-align:right;font-size:.7rem;font-weight:700}
+.sst.done{color:var(--ok)}.sst.part{color:var(--a2)}.sst.none{color:var(--dim)}
+.grp-sep{padding:5px 13px;background:rgba(78,168,222,.07);border-top:1px solid var(--border);font-size:.66rem;color:var(--accent);font-weight:700}
 
-.submitted-card{background:linear-gradient(135deg,rgba(6,214,160,.1),rgba(6,214,160,.03));border:1px solid rgba(6,214,160,.25);border-radius:var(--R);padding:26px 18px;text-align:center;margin-bottom:14px}
-.sub-big{font-size:2.8rem;margin-bottom:8px}
-.sub-title{font-size:1.05rem;font-weight:700;color:var(--success);margin-bottom:6px}
-.sub-dots{display:flex;justify-content:center;gap:7px;margin:12px 0}
-.sub-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700}
-.sub-dot.on{background:var(--success);color:#fff}
-.sub-dot.off{background:rgba(255,255,255,.08);color:var(--dim)}
-.sub-info{font-size:.76rem;color:var(--dim);line-height:1.7}
-.sync-row{display:flex;align-items:center;gap:6px;font-size:.68rem;color:var(--dim);margin-top:10px;justify-content:center}
-.sdot-sm{width:6px;height:6px;border-radius:50%;background:var(--dim);flex-shrink:0}
-.sdot-sm.ok{background:var(--success)}.sdot-sm.syn{background:var(--accent2);animation:blink 1s infinite}.sdot-sm.err{background:var(--danger)}
-.btn-resub{display:block;text-align:center;margin-top:10px;background:none;border:none;font-family:'Noto Sans KR',sans-serif;font-size:.73rem;color:var(--dim);cursor:pointer;text-decoration:underline;padding:6px}
-.btn-resub:hover{color:var(--text)}
+/* ── MONTHLY ── */
+.m-nav{display:flex;align-items:center;gap:11px;margin-bottom:13px}
+.mnav{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.9rem}
+.mnav:hover{border-color:var(--accent)}.m-lbl{font-size:.9rem;font-weight:700;flex:1}
+.rank-list{display:flex;flex-direction:column;gap:7px}
+.rrow{background:var(--card);border:1px solid var(--border);border-radius:var(--Rs);padding:11px 13px;display:flex;align-items:center;gap:10px}
+.rrow.top1{border-left:3px solid #ffd700}.rrow.top2{border-left:3px solid #c0c0c0}.rrow.top3{border-left:3px solid #cd7f32}
+.rn{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;line-height:1;min-width:30px;text-align:center;color:var(--dim)}
+.rn.r1{color:#ffd700}.rn.r2{color:#c0c0c0}.rn.r3{color:#cd7f32}
+.ri2{flex:1;min-width:0}.rname{font-size:.85rem;font-weight:700}.rsub{font-size:.65rem;color:var(--dim);margin-top:2px}
+.rr{display:flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:54px}
+.rpct{font-family:'Bebas Neue',sans-serif;font-size:1.25rem;line-height:1}
+.rbar-bg{width:54px;height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}.rbar{height:100%;border-radius:3px}
 
-/* ── HISTORY VIEW ── */
-.hist-wrap{padding:15px 15px 100px}
-.m-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:13px}
-.mnav{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:9px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.9rem}
-.mnav:hover{border-color:var(--accent)}
-.m-lbl{font-size:.9rem;font-weight:700;min-width:115px;text-align:center}
-.h-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px}
-.hsc{background:var(--card);border:1px solid var(--border);border-radius:var(--Rs);padding:11px 8px;text-align:center}
-.hsc .v{font-family:'Bebas Neue',sans-serif;font-size:1.65rem;line-height:1}
-.hsc .l{font-size:.6rem;color:var(--dim);margin-top:2px}
-.cal-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--R);padding:15px}
-.cal-dow{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:5px}
-.cal-dow span{text-align:center;font-size:.65rem;font-weight:700;color:var(--dim);padding:4px 0}
-.cal-dow span:first-child{color:#ff8a80}.cal-dow span:last-child{color:#82aaff}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
-.cc{aspect-ratio:1;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.76rem;font-weight:600;background:rgba(255,255,255,.03)}
-.cc.empty{background:transparent}.cc.future{opacity:.22}.cc.nm{opacity:.18;background:transparent}
-.cc.today{border:2px solid var(--accent);font-weight:900}
-.cc.c3{background:rgba(6,214,160,.2);color:var(--success)}
-.cc.c1,.cc.c2{background:rgba(255,209,102,.15);color:var(--accent2)}
-.cc .csub{font-size:.5rem;margin-top:1px;opacity:.8}
-.cc.ms::after{content:'';position:absolute;bottom:2px;width:4px;height:4px;border-radius:50%;background:rgba(78,168,222,.5)}
-.cc{position:relative}
-.cal-legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;justify-content:center}
-.leg{display:flex;align-items:center;gap:4px;font-size:.63rem;color:var(--dim)}
-.ldot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+/* ── PROXY ── */
+.prx-step{background:var(--card);border:1px solid var(--border);border-radius:var(--R);padding:16px 14px;margin-bottom:12px}
+.ps-t{display:flex;align-items:center;font-size:.83rem;font-weight:700;margin-bottom:13px}
+.ps-num{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;background:var(--accent);color:#fff;font-size:.7rem;font-weight:700;margin-right:8px;flex-shrink:0}
+.sel-btns{display:flex;flex-wrap:wrap;gap:7px}
+.sel-b{padding:8px 16px;border-radius:20px;background:var(--card2);border:2px solid var(--border);color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s}
+.sel-b.on{background:rgba(78,168,222,.2);border-color:var(--accent);color:var(--accent)}.sel-b:hover{border-color:rgba(78,168,222,.4)}.sel-b:active{transform:scale(.95)}
+.stu-btns{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:7px}
+.stu-b{background:var(--card2);border:2px solid var(--border);border-radius:var(--Rs);padding:9px 6px;text-align:center;font-family:'Noto Sans KR',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s}
+.stu-b.on{background:rgba(78,168,222,.2);border-color:var(--accent);color:var(--accent)}.stu-b:active{transform:scale(.92)}
+.d-inp{background:var(--card2);border:1px solid var(--border);border-radius:var(--Rs);padding:10px 13px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:.87rem;width:100%;outline:none;transition:border-color .2s}
+.d-inp:focus{border-color:var(--accent)}
+input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.6)}
+.lap-sel{display:flex;gap:10px;justify-content:center}
+.ls-b{width:68px;height:68px;border-radius:50%;background:var(--card2);border:3px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:1.5rem;line-height:1;cursor:pointer;transition:all .25s cubic-bezier(.34,1.56,.64,1);color:var(--dim)}
+.ls-b span{font-family:'Noto Sans KR',sans-serif;font-size:.53rem;font-weight:600;margin-top:2px}
+.ls-b:hover{transform:scale(1.06)}.ls-b.sel1{background:rgba(255,107,53,.2);border-color:var(--org);color:var(--org)}.ls-b.sel2{background:rgba(255,209,102,.2);border-color:var(--a2);color:var(--a2)}.ls-b.sel3{background:rgba(6,214,160,.2);border-color:var(--ok);color:var(--ok)}
+.prx-confirm{background:linear-gradient(135deg,rgba(6,214,160,.1),rgba(6,214,160,.03));border:1px solid rgba(6,214,160,.25);border-radius:var(--R);padding:16px 14px;margin-bottom:12px;display:none}
+.prx-c-lbl{font-size:.66rem;color:var(--dim);margin-bottom:3px;font-weight:600;letter-spacing:.5px}
+.prx-c-val{font-size:.92rem;font-weight:700;color:var(--ok)}
+.btn-prx{width:100%;padding:16px;border:none;border-radius:var(--Rs);background:linear-gradient(135deg,var(--ok),#04b888);color:#fff;font-family:'Noto Sans KR',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(6,214,160,.3);transition:all .2s;display:none}
+.btn-prx:hover{box-shadow:0 12px 32px rgba(6,214,160,.45);transform:translateY(-1px)}.btn-prx:active{transform:scale(.98)}
 
-/* ── LEADERBOARD VIEW ── */
-.lb-wrap{padding:15px 15px 100px}
-.lb-head-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.lb-m-lbl{font-size:.88rem;font-weight:700}
-.btn-rfsh{background:var(--card);border:1px solid var(--border);color:var(--dim);border-radius:9px;display:flex;align-items:center;gap:4px;padding:7px 12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-size:.72rem;font-weight:600;transition:all .2s}
-.btn-rfsh:hover{border-color:var(--accent);color:var(--text)}
-.btn-rfsh.sp .ri{animation:spin .7s linear infinite}
-.cls-tabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}
-.ct{padding:5px 13px;border-radius:20px;background:var(--card);border:1px solid var(--border);color:var(--dim);font-family:'Noto Sans KR',sans-serif;font-size:.72rem;font-weight:600;cursor:pointer;transition:all .2s}
-.ct.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.my-card{background:linear-gradient(135deg,rgba(255,107,53,.12),rgba(255,107,53,.04));border:1px solid rgba(255,107,53,.3);border-radius:var(--Rs);padding:11px 13px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;display:none}
-.my-card.show{display:flex}
-.mc-l .ml{font-size:.65rem;color:var(--accent);font-weight:700;margin-bottom:2px}
-.mc-l .mi{font-size:.82rem;font-weight:700}
-.mc-r{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--accent);line-height:1}
-.mc-r span{font-size:.75rem;font-weight:700;margin-left:1px}
-.lb-list{display:flex;flex-direction:column;gap:7px}
-.lrow{background:var(--card);border:1px solid var(--border);border-radius:var(--Rs);padding:11px 13px;display:flex;align-items:center;gap:10px}
-.lrow.top1{border-left:3px solid #ffd700}.lrow.top2{border-left:3px solid #c0c0c0}.lrow.top3{border-left:3px solid #cd7f32}
-.lr-num{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;line-height:1;min-width:30px;text-align:center;color:var(--dim)}
-.lr-num.r1{color:#ffd700}.lr-num.r2{color:#c0c0c0}.lr-num.r3{color:#cd7f32}
-.lr-info{flex:1;min-width:0}
-.lr-name{font-size:.85rem;font-weight:700}
-.lr-sub{font-size:.65rem;color:var(--dim);margin-top:2px}
-.me-bdg{font-size:.58rem;background:rgba(255,107,53,.2);color:var(--accent);border-radius:10px;padding:1px 6px;font-weight:700;margin-left:5px}
-.lr-r{display:flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:55px}
-.lr-pct{font-family:'Bebas Neue',sans-serif;font-size:1.25rem;line-height:1}
-.lr-bar-bg{width:55px;height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
-.lr-bar{height:100%;border-radius:3px}
-.lb-empty{text-align:center;padding:36px 20px;color:var(--dim);font-size:.78rem;line-height:1.7}
+/* ── SETTINGS ══════════════════════════════════ */
+.sset{background:var(--card);border:1px solid var(--border);border-radius:var(--R);padding:15px 14px;margin-bottom:13px}
+.sset h4{font-size:.76rem;font-weight:700;color:var(--accent);margin-bottom:13px;letter-spacing:.5px;display:flex;align-items:center;gap:7px}
+.fl{font-size:.66rem;color:var(--dim);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.fi{background:var(--card2);border:1px solid var(--border);border-radius:var(--Rs);padding:10px 13px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:.87rem;width:100%;outline:none;margin-bottom:11px;transition:border-color .2s}
+.fi:focus{border-color:var(--accent)}
+input[type=number].fi{-moz-appearance:textfield}
+.day-cks{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px}
+.dck{position:relative}.dck input[type=checkbox]{position:absolute;opacity:0;width:0;height:0}
+.dck label{display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--card2);border:2px solid var(--border);border-radius:8px;cursor:pointer;font-size:.77rem;font-weight:700;transition:all .2s}
+.dck input:checked+label{background:rgba(78,168,222,.2);border-color:var(--accent);color:var(--accent)}
 
-/* ── PANEL (settings) ── */
-.panel-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:800;align-items:flex-end;justify-content:center}
-.panel-ov.on{display:flex}
-.panel{background:var(--surface);border-radius:22px 22px 0 0;width:100%;max-width:500px;max-height:88vh;overflow-y:auto;padding:20px 17px 40px;animation:slideUp .3s cubic-bezier(.34,1.56,.64,1)}
-@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-.p-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px}
-.p-h3{font-size:1rem;font-weight:700;margin-bottom:15px;display:flex;align-items:center;gap:7px}
-.p-lbl{font-size:.66rem;color:var(--dim);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
-.p-inp{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:10px 13px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:.9rem;width:100%;outline:none;margin-bottom:11px;transition:border-color .2s}
-.p-inp:focus{border-color:var(--accent)}
-.p-sel{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:10px 13px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:.9rem;width:100%;outline:none;cursor:pointer;margin-bottom:11px}
-.p-divider{height:1px;background:var(--border);margin:14px 0}
-.p-row{display:flex;gap:8px;margin-top:4px}
-.btn-pp{flex:1;background:var(--accent);color:#fff;border:none;border-radius:9px;padding:12px;font-family:'Noto Sans KR',sans-serif;font-size:.87rem;font-weight:700;cursor:pointer;transition:background .2s}
-.btn-pp:hover{background:#ff8855}
-.btn-ps{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:12px 15px;font-family:'Noto Sans KR',sans-serif;font-size:.87rem;cursor:pointer}
-.btn-pd{width:100%;background:rgba(239,71,111,.1);color:var(--danger);border:1px solid rgba(239,71,111,.3);border-radius:9px;padding:11px;font-family:'Noto Sans KR',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer;margin-top:6px}
-.config-status{background:rgba(78,168,222,.08);border:1px solid rgba(78,168,222,.2);border-radius:9px;padding:10px 13px;font-size:.7rem;color:var(--dim);line-height:1.6;margin-bottom:11px}
-.config-status strong{color:var(--info)}
+/* Monthly targets grid */
+.mt-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:11px}
+.mt-item{background:var(--card2);border-radius:var(--Rs);padding:10px 12px}
+.mt-month{font-size:.68rem;color:var(--dim);margin-bottom:4px;font-weight:600}
+.mt-auto{font-size:.62rem;color:var(--accent);margin-bottom:5px}
+.mt-row{display:flex;align-items:center;gap:6px}
+.mt-inp{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:6px 10px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:.82rem;width:60px;text-align:center;outline:none;transition:border-color .2s;-moz-appearance:textfield}
+.mt-inp:focus{border-color:var(--accent)}
+.mt-unit{font-size:.72rem;color:var(--dim)}
 
-/* ── TOAST ── */
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--success);color:#fff;padding:11px 22px;border-radius:30px;font-weight:700;font-size:.83rem;opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);z-index:1000;white-space:nowrap;box-shadow:0 8px 30px rgba(6,214,160,.4)}
-.toast.warn{background:var(--accent);box-shadow:0 8px 30px rgba(255,107,53,.4)}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* Exception dates */
+.exc-row{display:flex;gap:7px;margin-bottom:8px}
+.exc-inp{background:var(--card2);border:1px solid var(--border);border-radius:var(--Rs);padding:8px 12px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:.82rem;flex:1;outline:none;transition:border-color .2s}
+.exc-inp:focus{border-color:var(--accent)}
+input[type=date].exc-inp::-webkit-calendar-picker-indicator{filter:invert(.6)}
+.exc-type{background:var(--card2);border:1px solid var(--border);border-radius:var(--Rs);padding:8px 10px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:.8rem;width:90px;outline:none;cursor:pointer;flex-shrink:0}
+.btn-add-e{background:var(--accent);color:#fff;border:none;border-radius:var(--Rs);padding:8px 13px;font-family:'Noto Sans KR',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer;flex-shrink:0;transition:background .2s}
+.btn-add-e:hover{background:#3d9fd0}
+.exc-list{display:flex;flex-direction:column;gap:5px;max-height:140px;overflow-y:auto}
+.exc-item{display:flex;align-items:center;justify-content:space-between;background:var(--card2);border-radius:8px;padding:7px 11px;font-size:.78rem}
+.exc-date{font-weight:600}
+.exc-type-badge{font-size:.62rem;padding:1px 7px;border-radius:10px;font-weight:700}
+.exc-type-badge.exclude{background:rgba(239,71,111,.15);color:var(--err)}.exc-type-badge.extra{background:rgba(6,214,160,.15);color:var(--ok)}
+.btn-exc-rm{background:none;border:none;color:var(--dim);cursor:pointer;font-size:.85rem;padding:2px 5px;border-radius:5px;transition:all .15s}
+.btn-exc-rm:hover{background:rgba(239,71,111,.2);color:var(--err)}
 
-.cf-wrap{position:fixed;inset:0;pointer-events:none;z-index:999;overflow:hidden}
-.cf{position:absolute;width:8px;height:8px;top:-10px;animation:cffall linear forwards;border-radius:2px}
-@keyframes cffall{0%{opacity:1;transform:translateY(0) rotate(0)}100%{opacity:0;transform:translateY(110vh) rotate(720deg)}}
+.inline{display:flex;gap:7px;margin-bottom:11px}
+.fi-sm{background:var(--card2);border:1px solid var(--border);border-radius:var(--Rs);padding:9px 12px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:.87rem;flex:1;outline:none;transition:border-color .2s}
+.fi-sm:focus{border-color:var(--accent)}
+.btn-add{background:var(--accent);color:#fff;border:none;border-radius:var(--Rs);padding:9px 13px;font-family:'Noto Sans KR',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .2s;flex-shrink:0}
+.btn-add:hover{background:#3d9fd0}
+.chip-list{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:11px;min-height:32px}
+.chip{display:flex;align-items:center;gap:5px;background:rgba(78,168,222,.12);border:1px solid rgba(78,168,222,.25);border-radius:20px;padding:3px 10px;font-size:.76rem;font-weight:600;color:var(--accent)}
+.crm{background:none;border:none;color:rgba(78,168,222,.6);cursor:pointer;font-size:.87rem;padding:0;line-height:1}
+.crm:hover{color:var(--err)}
+.list-edit{display:flex;flex-direction:column;gap:5px;max-height:160px;overflow-y:auto}
+.li{display:flex;align-items:center;justify-content:space-between;background:var(--card2);border-radius:9px;padding:8px 11px;font-size:.8rem}
+.li-l{display:flex;align-items:center;gap:7px}
+.li-num{color:var(--dim);font-size:.7rem}
+.li-grp{color:var(--dim);font-size:.7rem;background:rgba(255,255,255,.06);padding:1px 7px;border-radius:10px}
+.li-rm{background:none;border:none;color:var(--dim);cursor:pointer;font-size:.87rem;padding:2px 5px;border-radius:5px;transition:all .15s}
+.li-rm:hover{background:rgba(239,71,111,.2);color:var(--err)}
+.textarea-fi{background:var(--card2);border:1px solid var(--border);border-radius:var(--Rs);padding:10px 13px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:.83rem;width:100%;height:90px;resize:none;outline:none;line-height:1.8;margin-bottom:8px}
+.sel-fi{background:var(--card2);border:1px solid var(--border);border-radius:var(--Rs);padding:9px 12px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:.87rem;width:100%;outline:none;cursor:pointer;margin-bottom:9px}
+.btn-qr-show{background:linear-gradient(135deg,rgba(78,168,222,.2),rgba(78,168,222,.08));border:2px solid rgba(78,168,222,.4);color:var(--accent);border-radius:var(--Rs);padding:11px;width:100%;font-family:'Noto Sans KR',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px}
+.btn-qr-show:hover{background:rgba(78,168,222,.25);box-shadow:0 4px 16px rgba(78,168,222,.25)}
 
-/* ── QR SCANNER ── */
-.btn-qr{
-  width:100%;padding:13px;margin-bottom:10px;
-  background:rgba(78,168,222,.12);
-  border:2px solid rgba(78,168,222,.3);
-  border-radius:var(--Rs);
-  color:var(--info);
-  font-family:'Noto Sans KR',sans-serif;font-size:.92rem;font-weight:700;
-  cursor:pointer;transition:all .2s;
-  display:flex;align-items:center;justify-content:center;gap:8px;
-}
-.btn-qr:hover{background:rgba(78,168,222,.2);border-color:var(--info)}
-.btn-qr:active{transform:scale(.97)}
+/* QR Modal */
+.qr-modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);z-index:900;align-items:center;justify-content:center;padding:24px}
+.qr-modal-ov.on{display:flex}
+.qr-modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--R);padding:28px 24px;width:100%;max-width:340px;text-align:center}
+.qr-modal-title{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:2px;color:var(--accent);margin-bottom:4px}
+.qr-modal-sub{font-size:.7rem;color:var(--dim);margin-bottom:20px;line-height:1.5}
+.qr-box{background:#fff;border-radius:12px;padding:14px;display:inline-block;margin-bottom:16px}
+.qr-url-display{font-size:.6rem;color:var(--dim);word-break:break-all;margin-bottom:18px;background:var(--card2);border-radius:8px;padding:8px 12px;text-align:left;line-height:1.5}
+.btn-qr-dl{background:var(--accent);color:#fff;border:none;border-radius:var(--Rs);padding:11px 20px;font-family:'Noto Sans KR',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;transition:background .2s;margin-right:8px}
+.btn-qr-dl:hover{background:#3d9fd0}
+.btn-qr-cl{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:var(--Rs);padding:11px 20px;font-family:'Noto Sans KR',sans-serif;font-size:.82rem;cursor:pointer}
 
-.or-divider{display:flex;align-items:center;gap:10px;margin:4px 0 14px;color:var(--dim);font-size:.72rem}
-.or-divider::before,.or-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.btn-save-cfg:hover{box-shadow:0 10px 28px rgba(78,168,222,.4)}
+.btn-chgpin{width:100%;padding:11px;border:1px solid rgba(239,71,111,.3);border-radius:var(--Rs);background:rgba(239,71,111,.08);color:var(--err);font-family:'Noto Sans KR',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer;transition:all .2s}
+.btn-chgpin:hover{background:rgba(239,71,111,.16)}
 
-.qr-overlay{
-  display:none;position:fixed;inset:0;
-  background:rgba(0,0,0,.95);
-  z-index:900;
-  flex-direction:column;align-items:center;justify-content:center;
-  padding:24px;
-}
-.qr-overlay.on{display:flex}
+/* Code block */
+.code-block{background:#070912;border:1px solid var(--border);border-radius:9px;padding:11px;font-family:'Courier New',monospace;font-size:.6rem;color:#a8d8a8;overflow-x:auto;white-space:pre;line-height:1.5;max-height:170px;overflow-y:auto;margin:7px 0}
+.step-list{list-style:none;counter-reset:steps}
+.step-list li{counter-increment:steps;display:flex;gap:8px;margin-bottom:7px;font-size:.75rem;line-height:1.5;color:var(--dim)}
+.step-list li::before{content:counter(steps);background:var(--accent);color:#fff;width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;flex-shrink:0;margin-top:1px}
 
-.qr-frame-wrap{
-  position:relative;width:260px;height:260px;
-  border-radius:18px;overflow:hidden;
-  box-shadow:0 0 0 3px var(--accent),0 0 0 6px rgba(255,107,53,.15);
-}
-.qr-video{width:100%;height:100%;object-fit:cover;display:block}
-.qr-canvas{display:none}
+.empty-s{text-align:center;padding:34px 20px;color:var(--dim);font-size:.78rem;line-height:1.7}
+.loading-r{display:flex;align-items:center;justify-content:center;gap:9px;padding:28px;color:var(--dim);font-size:.78rem}
+.spn{width:26px;height:26px;border:3px solid rgba(255,255,255,.08);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
 
-/* Corner brackets overlay */
-.qr-corner{position:absolute;width:28px;height:28px;border-color:var(--accent);border-style:solid}
-.qr-corner.tl{top:8px;left:8px;border-width:3px 0 0 3px;border-radius:4px 0 0 0}
-.qr-corner.tr{top:8px;right:8px;border-width:3px 3px 0 0;border-radius:0 4px 0 0}
-.qr-corner.bl{bottom:8px;left:8px;border-width:0 0 3px 3px;border-radius:0 0 0 4px}
-.qr-corner.br{bottom:8px;right:8px;border-width:0 3px 3px 0;border-radius:0 0 4px 0}
-
-.qr-scan-line{
-  position:absolute;left:10px;right:10px;height:2px;
-  background:linear-gradient(90deg,transparent,var(--accent),transparent);
-  box-shadow:0 0 8px rgba(255,107,53,.6);
-  animation:qrScan 2s ease-in-out infinite;top:10px;
-}
-@keyframes qrScan{0%,100%{top:10px;opacity:.6}50%{top:calc(100% - 12px);opacity:1}}
-
-.qr-hint{color:rgba(255,255,255,.75);font-size:.8rem;margin-top:20px;text-align:center;line-height:1.7}
-.qr-hint strong{color:#fff;display:block;font-size:.95rem;margin-bottom:4px}
-
-.qr-success-wrap{
-  display:none;flex-direction:column;align-items:center;
-  gap:12px;text-align:center;
-}
-.qr-success-wrap .big{font-size:4rem}
-.qr-success-wrap .stit{font-size:1.1rem;font-weight:700;color:#fff}
-.qr-success-wrap .ssub{font-size:.72rem;color:rgba(255,255,255,.6);max-width:240px;word-break:break-all}
-
-.btn-qr-close{
-  margin-top:22px;
-  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
-  color:#fff;border-radius:10px;padding:12px 32px;
-  font-family:'Noto Sans KR',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;
-  transition:background .2s;
-}
-.btn-qr-close:hover{background:rgba(255,255,255,.2)}
-
-.qr-err{color:var(--danger);font-size:.8rem;margin-top:16px;text-align:center;display:none}
-
-.wm{position:fixed;bottom:4px;right:9px;font-size:.54rem;color:rgba(255,255,255,.08);pointer-events:none;letter-spacing:1px;z-index:50}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ok);color:#fff;padding:11px 22px;border-radius:30px;font-weight:700;font-size:.83rem;opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);z-index:1000;white-space:nowrap;box-shadow:0 8px 30px rgba(6,214,160,.4)}
+.toast.warn{background:var(--org);box-shadow:0 8px 30px rgba(255,107,53,.4)}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.wm{position:fixed;bottom:4px;right:9px;font-size:.52rem;color:rgba(255,255,255,.07);pointer-events:none;letter-spacing:1px;z-index:50}
 </style>
 </head>
 <body>
 
-<!-- ══ LOADING ══ -->
-<div id="screen-loading">
-  <div class="load-logo">MISSION</div>
-  <div class="load-spinner"></div>
-  <div class="load-text" id="loadText">설정을 불러오는 중…</div>
-</div>
-
-<!-- ══ URL INPUT ══ -->
-<div id="screen-url" style="display:none;flex-direction:column">
-  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:24px">
-    <div class="url-logo">MISSION</div>
-    <div class="url-sub">매일 달리는 나의 기록</div>
-    <div class="url-card">
-      <!-- QR 스캔 버튼 (최우선) -->
-      <button class="btn-qr" onclick="openQR()">
-        <span style="font-size:1.2rem">📷</span> QR 코드로 연결하기
-      </button>
-
-      <div class="or-divider">또는 직접 입력</div>
-
-      <div class="u-label">선생님이 알려준 연결 주소</div>
-      <input class="u-input" id="urlInput" type="url" placeholder="https://script.google.com/macros/s/..." oninput="checkUrl()">
-      <div class="u-hint">
-        📌 선생님께 받은 구글 시트 연결 주소를 입력하세요.<br>한 번 입력하면 다음부터는 자동으로 접속됩니다.
-      </div>
-      <button class="btn-connect" id="btnConnect" onclick="connectUrl()" disabled>연결하기 →</button>
+<!-- ══ PIN ══ -->
+<div id="scPin">
+  <div class="pin-logo">TEACHER ADMIN</div>
+  <div class="pin-title">미션<br>관리자</div>
+  <div class="pin-card">
+    <div class="pin-lbl" id="pinLbl">관리자 PIN 입력</div>
+    <div class="pin-dots" id="pinDots"><div class="pd" id="pd0"></div><div class="pd" id="pd1"></div><div class="pd" id="pd2"></div><div class="pd" id="pd3"></div></div>
+    <div class="pin-grid">
+      <div class="pk" onclick="pk('1')">1</div><div class="pk" onclick="pk('2')">2</div><div class="pk" onclick="pk('3')">3</div>
+      <div class="pk" onclick="pk('4')">4</div><div class="pk" onclick="pk('5')">5</div><div class="pk" onclick="pk('6')">6</div>
+      <div class="pk" onclick="pk('7')">7</div><div class="pk" onclick="pk('8')">8</div><div class="pk" onclick="pk('9')">9</div>
+      <div class="pk del" onclick="pd_del()">⌫</div><div class="pk" onclick="pk('0')">0</div><div class="pk ent" onclick="pe()">확인</div>
     </div>
-  </div>
-</div>
-
-<!-- QR 스캐너 오버레이 -->
-<div id="qrOverlay" class="qr-overlay">
-  <!-- 스캔 중 UI -->
-  <div id="qrScanUI" style="display:flex;flex-direction:column;align-items:center">
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:3px;color:var(--accent);margin-bottom:16px">QR 코드 스캔</div>
-    <div class="qr-frame-wrap">
-      <video id="qrVideo" class="qr-video" playsinline autoplay muted></video>
-      <canvas id="qrCanvas" class="qr-canvas"></canvas>
-      <div class="qr-corner tl"></div>
-      <div class="qr-corner tr"></div>
-      <div class="qr-corner bl"></div>
-      <div class="qr-corner br"></div>
-      <div class="qr-scan-line"></div>
-    </div>
-    <div class="qr-hint">
-      <strong>선생님 QR 코드를 비춰주세요</strong>
-      카메라를 QR 코드에 가까이 대면<br>자동으로 인식됩니다
-    </div>
-    <div class="qr-err" id="qrErr" style="display:none"></div>
-    <button class="btn-qr-close" onclick="closeQR()">닫기</button>
-  </div>
-
-  <!-- 인식 성공 UI -->
-  <div class="qr-success-wrap" id="qrSuccessUI" style="display:none">
-    <div class="big">✅</div>
-    <div class="stit">QR 코드 인식 완료!</div>
-    <div class="ssub" id="qrResultUrl">연결 중…</div>
-    <div style="font-size:.78rem;color:var(--accent);margin-top:4px">자동으로 연결합니다…</div>
-  </div>
-</div>
-
-<!-- ══ SETUP ══ -->
-<div id="screen-setup" style="display:none;flex-direction:column">
-  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:24px">
-    <div class="s-logo" id="setupLogo">MISSION</div>
-    <div class="s-sub">매일 달리는 나의 기록</div>
-    <div class="s-card">
-      <div class="s-label">내 이름</div>
-      <input class="s-input" id="setupName" type="text" placeholder="이름을 입력하세요" maxlength="10"
-        oninput="checkSetup()" onkeydown="if(event.key==='Enter')tryStart()">
-      <div class="s-label">학반</div>
-      <select class="s-select" id="setupClass" onchange="checkSetup()">
-        <option value="">학반을 선택하세요</option>
-      </select>
-      <button class="btn-start" id="btnStart" onclick="startApp()" disabled>시작하기 →</button>
-    </div>
+    <div class="pin-err" id="pinErr"></div>
+    <div class="pin-hint" id="pinHint"></div>
   </div>
 </div>
 
 <!-- ══ MAIN ══ -->
-<div id="screen-main">
-  <div class="hdr">
-    <div>
-      <div class="hdr-name" id="hdrName">이름</div>
-      <div class="hdr-class" id="hdrClass">학반</div>
+<div id="scMain">
+  <div class="ahdr">
+    <div class="ah-l">
+      <div class="ah-bdg">ADMIN</div>
+      <div><div class="ah-title" id="ahTitle">미션 관리자</div><div class="ah-sub" id="ahSub">교사용 관리 시스템</div></div>
     </div>
-    <div class="hdr-btns">
-      <button class="btn-refresh-all" id="btnRefreshAll" onclick="globalRefresh()">
-        <span>🔄</span> 새로고침
-      </button>
-      <button class="btn-logout" onclick="logout()">↩ 로그아웃</button>
-      <button class="btn-h" onclick="openSettings()">⚙️</button>
+    <button class="btn-lock" onclick="lockAdmin()">🔒 잠금</button>
+  </div>
+
+  <!-- Sync Status Bar -->
+  <div class="sync-status-bar">
+    <div class="ssb-l">
+      <div class="ssb-dot" id="ssbDot"></div>
+      <span id="ssbText">구글 시트와 동기화하면 학생 앱에 설정이 반영됩니다</span>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button class="btn-sync-all" id="btnGlobalRefresh" onclick="globalRefresh()" style="background:rgba(6,214,160,.18);border:1px solid rgba(6,214,160,.35);color:var(--ok)">🔄 전체 새로고침</button>
+      <button class="btn-sync-all" id="btnTestConn" onclick="testConnection()" style="background:rgba(78,168,222,.15);border:1px solid rgba(78,168,222,.3);color:var(--accent)">🔌 연결 테스트</button>
+      <button class="btn-sync-all" id="btnSyncAll" onclick="pushConfig()">☁️ 설정 동기화</button>
     </div>
   </div>
-  <div class="date-bar">
-    <div class="d" id="dateLabel">…</div>
-    <div class="st" id="dateStatus">미션 대기 중</div>
+
+  <div class="nav">
+    <button class="nb active" onclick="gv('today')" id="nav-today">📋 오늘</button>
+    <button class="nb" onclick="gv('monthly')" id="nav-monthly">📅 월별</button>
+    <button class="nb" onclick="gv('proxy')" id="nav-proxy">✏️ 대리</button>
+    <button class="nb" onclick="gv('settings')" id="nav-settings">⚙️ 설정</button>
   </div>
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('today')" id="tab-today">🏃 오늘 미션</button>
-    <button class="tab" onclick="switchTab('history')" id="tab-history">📅 내 기록</button>
-    <button class="tab" onclick="switchTab('lb')" id="tab-lb">🏆 순위표</button>
-  </div>
+
+  <div class="scroll" id="viewWrap">
 
   <!-- TODAY -->
-  <div class="scroll" id="view-today">
-    <div class="today-wrap">
-      <div id="stNormal">
-        <div class="mission-card">
-          <div class="mc-badge">🏟️ 오늘의 미션</div>
-          <div class="mc-name" id="mcName">운동장 3바퀴 완주</div>
-          <div class="lap-rings" id="lapRings"></div>
-          <div class="tap-hint" id="tapHint">👆 바퀴 아이콘을 탭해서 기록하세요</div>
-          <button class="btn-undo-l" id="btnUndo" onclick="undoLap()" style="display:none">↩ 마지막 바퀴 취소</button>
+  <div class="view active" id="view-today">
+    <div class="top-bar">
+      <div class="tb-l"><div class="td" id="tdDate">…</div><div class="tm" id="tdMission">미션: …</div></div>
+      <div style="font-size:.68rem;color:rgba(255,255,255,.7)">상단 🔄 전체 새로고침으로 업데이트</div>
+    </div>
+    <div class="prog-card">
+      <div class="pc-top"><div class="pc-lbl">전체 완료 현황</div><div class="pc-cnt" id="pcCnt">—</div></div>
+      <div class="prog-bg"><div class="prog-fill" id="progFill" style="width:0"></div></div>
+    </div>
+    <div class="stat-row" id="todayStats"></div>
+    <div class="cls-filter" id="todayCls"></div>
+    <div class="stu-table" id="stuTable"><div class="loading-r">데이터를 불러오세요</div></div>
+  </div>
+
+  <!-- MONTHLY -->
+  <div class="view" id="view-monthly">
+    <div class="m-nav">
+      <button class="mnav" onclick="cm(-1)">◀</button>
+      <div class="m-lbl" id="mLbl">…</div>
+      <button class="mnav" onclick="cm(1)">▶</button>
+    </div>
+    <div class="stat-row" id="mStats"></div>
+    <div class="cls-filter" id="mCls"></div>
+    <div class="rank-list" id="rankList"><div class="empty-s">🔄 버튼을 눌러 순위표를 불러오세요</div></div>
+  </div>
+
+  <!-- PROXY -->
+  <div class="view" id="view-proxy">
+    <div class="prx-step"><div class="ps-t"><span class="ps-num">1</span> 날짜 선택</div><input type="date" class="d-inp" id="prxDate"></div>
+    <div class="prx-step"><div class="ps-t"><span class="ps-num">2</span> 학반 선택</div><div class="sel-btns" id="prxCls"></div></div>
+    <div class="prx-step"><div class="ps-t"><span class="ps-num">3</span> 학생 선택</div><div class="stu-btns" id="prxStu"><div style="font-size:.77rem;color:var(--dim)">먼저 학반을 선택하세요</div></div></div>
+    <div class="prx-step"><div class="ps-t"><span class="ps-num">4</span> 바퀴 수</div><div class="lap-sel" id="prxLap"></div></div>
+    <div class="prx-confirm" id="prxConfirm"><div class="prx-c-lbl">대리 제출 내용 확인</div><div class="prx-c-val" id="prxVal">—</div></div>
+    <button class="btn-prx" id="btnPrx" onclick="doProxy()">✅ 대리 제출하기</button>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="view" id="view-settings">
+
+    <!-- GAS URL -->
+    <div class="sset">
+      <h4>🔗 구글 시트 연동</h4>
+
+      <!-- 배포 단계 안내 -->
+      <div style="background:rgba(78,168,222,.07);border:1px solid rgba(78,168,222,.2);border-radius:var(--Rs);padding:11px 13px;margin-bottom:12px;font-size:.7rem;color:var(--dim);line-height:1.8">
+        <div style="font-weight:700;color:var(--accent);margin-bottom:6px">📋 최초 설정 순서</div>
+        <div>① 아래 스크립트를 복사</div>
+        <div>② 구글 시트 → 확장 프로그램 → Apps Script → 붙여넣기 → 저장</div>
+        <div>③ 배포 → <strong style="color:#fff">새 배포</strong> → 유형: 웹 앱 → 실행계정: <strong style="color:#fff">나</strong> → 액세스: <strong style="color:#fff">모든 사용자</strong></div>
+        <div>④ 생성된 URL 아래에 입력 → <strong style="color:var(--ok)">🔌 연결 테스트</strong></div>
+        <div style="margin-top:6px;color:rgba(255,255,255,.4)">⚠️ 코드 수정 시 기존 배포를 선택하여 <strong style="color:#fff">버전 업데이트</strong></div>
+      </div>
+
+      <div class="fl">Google Apps Script 웹 앱 URL</div>
+      <input class="fi" type="url" id="cfgGas" placeholder="https://script.google.com/macros/s/...">
+
+      <!-- 연결 테스트 결과 -->
+      <div id="connTestResult" style="display:none;background:var(--card2);border-radius:var(--Rs);padding:10px 13px;margin-bottom:11px;font-size:.75rem;line-height:1.7"></div>
+
+      <div style="display:flex;gap:7px;margin-bottom:12px">
+        <button onclick="testConnectionFromSettings()" style="flex:1;background:linear-gradient(135deg,rgba(6,214,160,.2),rgba(6,214,160,.08));border:1px solid rgba(6,214,160,.35);color:var(--ok);border-radius:var(--Rs);padding:10px;font-family:'Noto Sans KR',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .2s" id="btnTestSettings">🔌 연결 테스트</button>
+        <button onclick="saveAndSync()" style="flex:1;background:linear-gradient(135deg,var(--accent),#3d9fd0);border:none;color:#fff;border-radius:var(--Rs);padding:10px;font-family:'Noto Sans KR',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .2s">💾 저장 후 동기화</button>
+      </div>
+
+      <div class="code-block" id="gasCode"></div>
+      <div style="display:flex;gap:8px;margin-bottom:4px">
+        <button onclick="copyGas()" style="background:var(--card2);border:1px solid var(--border);color:var(--dim);border-radius:var(--Rs);padding:7px 14px;font-family:'Noto Sans KR',sans-serif;font-size:.72rem;cursor:pointer">📋 스크립트 복사</button>
+      </div>
+      <!-- QR 코드 생성 버튼 -->
+      <button class="btn-qr-show" onclick="showQR()">
+        <span style="font-size:1.1rem">📱</span> 학생 연결용 QR 코드 생성
+      </button>
+      <div style="font-size:.67rem;color:var(--dim);line-height:1.5">
+        QR 코드를 생성하면 학생들이 카메라로 스캔하여 바로 연결할 수 있습니다.
+      </div>
+    </div>
+
+    <!-- QR 코드 모달 -->
+    <div class="qr-modal-ov" id="qrModalOv">
+      <div class="qr-modal">
+        <div class="qr-modal-title">📱 학생 연결 QR 코드</div>
+        <div class="qr-modal-sub">학생들이 이 QR 코드를 스캔하면<br>자동으로 연결됩니다</div>
+        <div class="qr-box"><div id="qrCodeBox"></div></div>
+        <div class="qr-url-display" id="qrUrlDisplay">URL 로딩 중…</div>
+        <div>
+          <button class="btn-qr-dl" onclick="downloadQR()">💾 이미지 저장</button>
+          <button class="btn-qr-cl" onclick="closeQRModal()">닫기</button>
         </div>
-        <div class="status-bdg">
-          <div class="sdot wait" id="sdot"></div>
-          <span id="stext">아직 미션을 시작하지 않았어요.</span>
-        </div>
-        <button class="btn-sub idle" id="btnSub" onclick="submitMission()">바퀴를 기록한 뒤 제출하세요</button>
-      </div>
-      <div id="stSubmitted" style="display:none">
-        <div class="submitted-card">
-          <div class="sub-big">✅</div>
-          <div class="sub-title">오늘 미션 제출 완료!</div>
-          <div class="sub-dots" id="subDots"></div>
-          <div class="sub-info" id="subInfo"></div>
-        </div>
-        <div class="sync-row"><div class="sdot-sm" id="syncDot"></div><span id="syncText">확인 중</span></div>
-        <button class="btn-resub" onclick="resubmit()">잘못 제출했나요? 다시 제출하기</button>
       </div>
     </div>
-  </div>
 
-  <!-- HISTORY -->
-  <div class="scroll" id="view-history" style="display:none">
-    <div class="hist-wrap">
-      <div class="m-nav">
-        <button class="mnav" onclick="changeHM(-1)">◀</button>
-        <div class="m-lbl" id="hMonthLabel">…</div>
-        <button class="mnav" onclick="changeHM(1)">▶</button>
-      </div>
-      <div class="h-stats" id="hStats"></div>
-      <div class="cal-wrap">
-        <div class="cal-dow"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
-        <div class="cal-grid" id="hCal"></div>
-      </div>
-      <div class="cal-legend">
-        <div class="leg"><div class="ldot" style="background:rgba(6,214,160,.4)"></div>완료</div>
-        <div class="leg"><div class="ldot" style="background:rgba(255,209,102,.35)"></div>부분완료</div>
-        <div class="leg"><div class="ldot" style="background:rgba(78,168,222,.25)"></div>미션 예정일</div>
+    <!-- Mission -->
+    <div class="sset">
+      <h4>🎯 미션 설정</h4>
+      <div class="fl">프로그램 이름</div>
+      <input class="fi" type="text" id="cfgProg" placeholder="예) MISSION" maxlength="20">
+      <div class="fl">미션 설명</div>
+      <input class="fi" type="text" id="cfgMis" placeholder="예) 운동장 3바퀴 완주" maxlength="30">
+      <div class="fl">완료 기준 바퀴 수</div>
+      <input class="fi" type="number" id="cfgLaps" min="1" max="10" placeholder="3" style="width:80px">
+      <div class="fl">미션 수행 요일</div>
+      <div class="day-cks">
+        <div class="dck"><input type="checkbox" id="dw0"><label for="dw0">일</label></div>
+        <div class="dck"><input type="checkbox" id="dw1" checked><label for="dw1">월</label></div>
+        <div class="dck"><input type="checkbox" id="dw2" checked><label for="dw2">화</label></div>
+        <div class="dck"><input type="checkbox" id="dw3" checked><label for="dw3">수</label></div>
+        <div class="dck"><input type="checkbox" id="dw4" checked><label for="dw4">목</label></div>
+        <div class="dck"><input type="checkbox" id="dw5" checked><label for="dw5">금</label></div>
+        <div class="dck"><input type="checkbox" id="dw6"><label for="dw6">토</label></div>
       </div>
     </div>
-  </div>
 
-  <!-- LEADERBOARD -->
-  <div class="scroll" id="view-lb" style="display:none">
-    <div class="lb-wrap">
-      <div class="lb-head-row">
-        <div class="lb-m-lbl" id="lbLabel">순위표</div>
-        <button class="btn-rfsh" id="lbBtn" onclick="fetchLb()"><span class="ri">🔄</span> 새로고침</button>
+    <!-- Exception Dates -->
+    <div class="sset">
+      <h4>📅 미션 수행 날짜 예외 설정</h4>
+      <div style="font-size:.7rem;color:var(--dim);margin-bottom:10px;line-height:1.6">
+        요일 설정과 관계없이 특정 날짜를 미션일에서 제외하거나 추가할 수 있습니다.<br>
+        <span style="color:var(--err)">■</span> 제외: 선택한 날은 미션일에서 제외 (예: 공휴일)<br>
+        <span style="color:var(--ok)">■</span> 추가: 선택한 날을 미션일로 추가 (예: 보충 미션일)
       </div>
-      <div class="cls-tabs" id="lbTabs"></div>
-      <div class="my-card" id="myCard">
-        <div class="mc-l"><div class="ml">나의 순위</div><div class="mi" id="myInfo">—</div></div>
-        <div class="mc-r" id="myRank">—<span>위</span></div>
+      <div class="exc-row">
+        <input type="date" class="exc-inp" id="excDate">
+        <select class="exc-type" id="excType">
+          <option value="exclude">제외</option>
+          <option value="extra">추가</option>
+        </select>
+        <button class="btn-add-e" onclick="addExcDate()">추가</button>
       </div>
-      <div class="lb-list" id="lbList">
-        <div class="lb-empty">🔄 새로고침을 눌러 순위표를 불러오세요</div>
-      </div>
+      <div class="exc-list" id="excList"></div>
     </div>
-  </div>
 
-</div><!-- /screen-main -->
-
-<!-- SETTINGS PANEL -->
-<div class="panel-ov" id="panelOv">
-  <div class="panel">
-    <div class="p-handle"></div>
-    <div class="p-h3">⚙️ 설정</div>
-    <div class="config-status" id="cfgStatus"></div>
-    <div class="p-lbl">이름 변경</div>
-    <input class="p-inp" id="pName" type="text" maxlength="10">
-    <div class="p-lbl">학반 변경</div>
-    <select class="p-sel" id="pClass"></select>
-    <div class="p-divider"></div>
-    <div class="p-lbl">연결 주소 (GAS URL)</div>
-    <input class="p-inp" id="pUrl" type="url" placeholder="https://script.google.com/macros/s/...">
-    <div class="p-row">
-      <button class="btn-ps" onclick="closeSettings()">닫기</button>
-      <button class="btn-pp" onclick="saveSettings()">저장</button>
+    <!-- Monthly Targets -->
+    <div class="sset">
+      <h4>🏆 월별 미션 성공 기준</h4>
+      <div style="font-size:.7rem;color:var(--dim);margin-bottom:10px;line-height:1.6">
+        각 달의 목표 달성 기준을 설정하세요. 비워두면 요일 설정으로 자동 계산됩니다.
+      </div>
+      <div class="fl">이달 달성 기준 (%)</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <input class="fi" type="number" id="cfgThresh" min="1" max="100" placeholder="100" style="width:80px;margin-bottom:0">
+        <span style="font-size:.78rem;color:var(--dim)">% 이상 완료 시 '목표 달성'으로 표시</span>
+      </div>
+      <div class="fl">월별 목표일 수 직접 입력 <span style="font-weight:400;text-transform:none;letter-spacing:0">(비우면 자동 계산)</span></div>
+      <div class="mt-grid" id="mtGrid"></div>
     </div>
-    <div class="p-divider"></div>
-    <button onclick="logout()" style="width:100%;background:rgba(239,71,111,.1);border:1px solid rgba(239,71,111,.28);color:var(--danger);border-radius:9px;padding:12px;font-family:'Noto Sans KR',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;margin-bottom:8px;transition:all .2s">
-      ↩ 로그아웃 (다른 계정으로 전환)
-    </button>
-    <button class="btn-pd" onclick="resetData()">🗑 내 기록 모두 삭제</button>
+
+    <!-- Classes -->
+    <div class="sset">
+      <h4>🏫 학반 관리</h4>
+      <div class="inline">
+        <input class="fi-sm" type="text" id="newCls" placeholder="예) 3학년 1반" maxlength="15" onkeydown="if(event.key==='Enter')addCls()">
+        <button class="btn-add" onclick="addCls()">추가</button>
+      </div>
+      <div class="chip-list" id="clsChips"></div>
+    </div>
+
+    <!-- Roster -->
+    <div class="sset">
+      <h4>👤 학생 명단 <span style="font-size:.63rem;color:var(--dim);font-weight:400">(대리 제출용)</span></h4>
+      <div class="inline">
+        <select class="fi-sm" id="rCls" style="max-width:130px"></select>
+        <input class="fi-sm" type="text" id="rName" placeholder="이름" maxlength="10" onkeydown="if(event.key==='Enter')addRoster()">
+        <button class="btn-add" onclick="addRoster()">추가</button>
+      </div>
+      <div style="font-size:.7rem;color:var(--dim);margin-bottom:7px">또는 일괄 입력</div>
+      <select class="sel-fi" id="rBulkCls"></select>
+      <textarea class="textarea-fi" id="rBulk" placeholder="김민준&#10;이서연&#10;박지호&#10;..."></textarea>
+      <div class="inline"><button class="btn-add" onclick="bulkRoster()" style="width:100%">일괄 추가</button></div>
+      <div class="list-edit" id="rosterUi"></div>
+    </div>
+
+    <!-- PIN -->
+    <div class="sset">
+      <h4>🔐 보안</h4>
+      <button class="btn-chgpin" onclick="startPinChange()">관리자 PIN 변경</button>
+    </div>
+
+    <button class="btn-save-cfg" onclick="saveCfg()">💾 설정 저장</button>
   </div>
-</div>
+
+  </div><!-- /viewWrap -->
+</div><!-- /scMain -->
 
 <div class="toast" id="toast"></div>
-<div class="cf-wrap" id="cfWrap"></div>
 <div class="wm">made by 박선생</div>
 
-<script>
-/* ══════════════════════════════════════════
-   선생님 설정 — GAS URL만 입력하면 됩니다!
-   나머지 설정(학반, 미션명 등)은 교사용 앱에서
-   저장하면 자동으로 여기에 반영됩니다.
-══════════════════════════════════════════ */
-const HARDCODED_GAS_URL = 'https://script.google.com/macros/s/AKfycbx5ddShK7GQc4CPkaSk1KiWnlZiEbzpGDBcDlSCbfxdo485gT_JevV9zA1PIGqZ2FTw/exec';   // ← 여기에 GAS URL 입력 (선택사항)
+<!-- GAS 스크립트 저장소 (textarea 방식 — 이스케이프 문제 없음) -->
+<textarea id="gasStore" style="display:none;visibility:hidden">// ════════════════════════════════════════
+// 미션 체크 — GAS 서버 스크립트
+// ────────────────────────────────────────
+// 배포 방법:
+//   Apps Script 편집기에 이 코드 전체를 붙여넣기
+//   → 배포 → 새 배포(최초) 또는 배포 관리(업데이트)
+//   → 유형: 웹 앱 / 실행 계정: 나 / 액세스: 모든 사용자
+// ════════════════════════════════════════
 
-/* ══════════════════════════════════════════
-   DATA
-══════════════════════════════════════════ */
-const SKEY = 'mc_student_v2';
-const CFG_CACHE_MS = 60 * 60 * 1000; // 1시간 캐시
-
-function defStudent() {
-  return { name:'', className:'', gasUrl: HARDCODED_GAS_URL||'', history:{} };
+// ── 내부 관리 시트 제외 (학생 데이터 시트만 읽음)
+function isDataSheet(name) {
+  var skip = ['Config', '설정', '통계', 'README', 'Sheet1', '시트1'];
+  return skip.indexOf(name) === -1;
 }
 
-function defConfig() {
+// ── POST: 기록 저장 / 설정 저장
+function doPost(e) {
+  try {
+    var d  = JSON.parse(e.postData.contents);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    // [1] 설정 저장 (교사 앱 → 구글 시트)
+    if (d.action === 'saveConfig') {
+      var cfg = ss.getSheetByName('Config') || ss.insertSheet('Config');
+      cfg.clearContents();
+      cfg.appendRow(['key', 'value']);
+      var keys = Object.keys(d.config);
+      for (var ki = 0; ki < keys.length; ki++) {
+        var k   = keys[ki];
+        var val = d.config[k];
+        cfg.appendRow([k, typeof val === 'object' ? JSON.stringify(val) : String(val)]);
+      }
+      return respond({ success: true });
+    }
+
+    // [2] 학생/대리 기록 저장 (학반별 시트)
+    var rawClass   = d.className || '전체';
+    var sheetName  = rawClass.split('/').join('-'); // 슬래시 제거 (정규식 불사용)
+    var sheet      = ss.getSheetByName(sheetName);
+
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetName);
+      sheet.appendRow(['날짜', '이름', '학반', '바퀴수', '완료여부', '제출시각', '제출자']);
+      sheet.getRange(1, 1, 1, 7).setFontWeight('bold').setBackground('#e8eaf0');
+    }
+
+    // parseInt()||0 은 0을 falsy로 처리하므로 명시적 처리
+    var laps = parseInt(d.laps);
+    if (isNaN(laps)) laps = 0;
+    var req  = parseInt(d.lapsRequired) || 3;
+
+    // 같은 날짜 + 이름 행 있으면 업데이트
+    var vals   = sheet.getDataRange().getValues();
+    var rowIdx = -1;
+    for (var ri = 1; ri < vals.length; ri++) {
+      var rowDate = vals[ri][0] instanceof Date
+        ? Utilities.formatDate(vals[ri][0], 'Asia/Seoul', 'yyyy-MM-dd')
+        : String(vals[ri][0]);
+      if (rowDate === d.date && String(vals[ri][1]) === String(d.name)) {
+        rowIdx = ri + 1;
+        break;
+      }
+    }
+
+    var completionLabel = laps >= req ? '완료'
+      : laps === 0 ? '기록없음'
+      : laps + '/' + req;
+    var submitterLabel = d.isProxy ? '교사대리'
+      : d.isUpdate ? '학생(수정)'
+      : '학생';
+
+    var rowData = [
+      d.date,
+      d.name,
+      d.className || '',
+      laps,
+      completionLabel,
+      d.submittedAt || '',
+      submitterLabel
+    ];
+
+    if (rowIdx > 0) {
+      sheet.getRange(rowIdx, 1, 1, 7).setValues([rowData]);
+    } else {
+      sheet.appendRow(rowData);
+      rowIdx = sheet.getLastRow();
+    }
+
+    // 색상
+    var bg = laps >= req ? '#c8e6c9' : (laps > 0 ? '#fff9c4' : null);
+    if (bg) {
+      sheet.getRange(rowIdx, 1, 1, 7).setBackground(bg);
+    } else {
+      sheet.getRange(rowIdx, 1, 1, 7).setBackground(null);
+    }
+
+    return respond({ success: true });
+
+  } catch (err) {
+    return respond({ success: false, error: err.toString() });
+  }
+}
+
+// ── GET: 조회 API
+function doGet(e) {
+  var p      = (e && e.parameter) ? e.parameter : {};
+  var action = p.action || '';
+  var ss     = SpreadsheetApp.getActiveSpreadsheet();
+
+  try {
+
+    // [1] 설정 읽기 (?action=config)
+    if (action === 'config') {
+      var cfgSheet = ss.getSheetByName('Config');
+      if (!cfgSheet) return respond({ success: true, config: {} });
+      var rows   = cfgSheet.getDataRange().getValues();
+      var config = {};
+      // 첫 행이 헤더(key / value)면 건너뜀
+      var startRow = (rows.length > 0 && String(rows[0][0]) === 'key') ? 1 : 0;
+      for (var ci = startRow; ci < rows.length; ci++) {
+        var ck = String(rows[ci][0]);
+        var cv = rows[ci][1];
+        if (!ck) continue;
+        // JSON 문자열이면 파싱
+        if (typeof cv === 'string' && cv.length > 0) {
+          var first = cv.charAt(0);
+          if (first === '[' || first === '{') {
+            try { cv = JSON.parse(cv); } catch (_) {}
+          }
+        }
+        config[ck] = cv;
+      }
+      return respond({ success: true, config: config });
+    }
+
+    // [2] 오늘 현황 (?action=today&date=YYYY-MM-DD&lapsRequired=3)
+    if (action === 'today') {
+      var targetDate = p.date || '';
+      var todayRows  = [];
+      var sheets     = ss.getSheets();
+      for (var si = 0; si < sheets.length; si++) {
+        var sh = sheets[si];
+        if (!isDataSheet(sh.getName())) continue;
+        var data = sh.getDataRange().getValues();
+        for (var di = 1; di < data.length; di++) {
+          var r       = data[di];
+          var rowDate = r[0] instanceof Date
+            ? Utilities.formatDate(r[0], 'Asia/Seoul', 'yyyy-MM-dd')
+            : String(r[0]);
+          if (rowDate !== targetDate) continue;
+          var tName = String(r[1]);
+          var tCls  = String(r[2]);
+          if (!tName || tName === '이름') continue;
+          todayRows.push({
+            name:        tName,
+            className:   tCls,
+            laps:        parseInt(r[3]) || 0,
+            submittedAt: String(r[5]) || '',
+            isProxy:     String(r[6]) === '교사대리'
+          });
+        }
+      }
+      return respond({ success: true, data: todayRows, date: targetDate });
+    }
+
+    // [3] 월별 순위표 (?action=leaderboard&month=YYYY-MM&lapsRequired=3)
+    if (action === 'leaderboard') {
+      var month    = p.month || '';
+      var lbReq    = parseInt(p.lapsRequired) || 3;
+      var students = {};
+      var lbSheets = ss.getSheets();
+      for (var li = 0; li < lbSheets.length; li++) {
+        var lsh = lbSheets[li];
+        if (!isDataSheet(lsh.getName())) continue;
+        var ldata = lsh.getDataRange().getValues();
+        for (var ldi = 1; ldi < ldata.length; ldi++) {
+          var lr      = ldata[ldi];
+          var lDate   = lr[0] instanceof Date
+            ? Utilities.formatDate(lr[0], 'Asia/Seoul', 'yyyy-MM-dd')
+            : String(lr[0]);
+          if (month && lDate.indexOf(month) !== 0) continue;
+          var lName = String(lr[1]);
+          var lCls  = String(lr[2]);
+          if (!lName || lName === '이름') continue;
+          var llaps = parseInt(lr[3]) || 0;
+          var lkey  = lName + '||' + lCls;
+          if (!students[lkey]) {
+            students[lkey] = { name: lName, className: lCls, completeDays: 0, totalLaps: 0 };
+          }
+          students[lkey].totalLaps += llaps;
+          if (llaps >= lbReq) students[lkey].completeDays++;
+        }
+      }
+      // 정렬: 완료일 내림차순 → 총 바퀴 내림차순
+      var lbKeys   = Object.keys(students);
+      var lbResult = [];
+      for (var rk = 0; rk < lbKeys.length; rk++) {
+        lbResult.push(students[lbKeys[rk]]);
+      }
+      lbResult.sort(function (a, b) {
+        if (b.completeDays !== a.completeDays) return b.completeDays - a.completeDays;
+        return b.totalLaps - a.totalLaps;
+      });
+      return respond({ success: true, data: lbResult, month: month });
+    }
+
+    // [4] 연결 테스트 (?action=ping)
+    if (action === 'ping') {
+      return respond({ success: true, message: 'pong', timestamp: new Date().toISOString() });
+    }
+
+    return respond({ success: true, message: 'GAS API Ready' });
+
+  } catch (err) {
+    return respond({ success: false, error: err.toString() });
+  }
+}
+
+// ── 응답 헬퍼
+function respond(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+</textarea>
+
+<script>
+/* ══════════════════════════════════════════════
+   GAS SCRIPT
+══════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════
+   DATA
+══════════════════════════════════════════════ */
+const TKEY = 'tc_admin_v2';
+
+function defCfg() {
   return {
+    pin:'1234', gasUrl:'',
     programName:'MISSION', missionName:'운동장 3바퀴 완주',
     lapsRequired:3, missionWeekdays:[1,2,3,4,5],
-    classes:[], monthlyTargets:{}, achieveThreshold:100,
-    excludeDates:[], extraDates:[]
+    achieveThreshold:100,
+    monthlyTargets:{},
+    excludeDates:[], extraDates:[],
+    classes:[], roster:[]
   };
 }
 
-function ls()  { try{ return JSON.parse(localStorage.getItem(SKEY)||'null')||defStudent(); }catch{ return defStudent(); } }
-function ss(d) { localStorage.setItem(SKEY,JSON.stringify(d)); }
-function lc()  { try{ return JSON.parse(localStorage.getItem(SKEY+'_cfg')||'null'); }catch{ return null; } }
-function sc(c) { localStorage.setItem(SKEY+'_cfg',JSON.stringify({...c,_cachedAt:Date.now()})); }
-
-function gasUrl() { return (ls().gasUrl||HARDCODED_GAS_URL||'').trim(); }
+function lc()  { try{ return JSON.parse(localStorage.getItem(TKEY)||'null')||defCfg(); }catch{return defCfg();} }
+function sc(c) { localStorage.setItem(TKEY,JSON.stringify(c)); }
 
 function pad(n){ return String(n).padStart(2,'0'); }
-function today(){ const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
-function todayLabel(){
-  const d=new Date();
-  return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${['일','월','화','수','목','금','토'][d.getDay()]})`;
-}
+function getToday(){ const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function todayLabel(){const d=new Date();return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${['일','월','화','수','목','금','토'][d.getDay()]})`;}
 function nowTime(){ const n=new Date(); return `${pad(n.getHours())}:${pad(n.getMinutes())}`; }
-function isMD(cfg, dt) {
-  if ((cfg.excludeDates||[]).includes(dt)) return false;
-  if ((cfg.extraDates||[]).includes(dt)) return true;
-  return (cfg.missionWeekdays||[1,2,3,4,5]).includes(new Date(dt).getDay());
+
+function isMD(cfg2, dt) {
+  if ((cfg2.excludeDates||[]).includes(dt)) return false;
+  if ((cfg2.extraDates||[]).includes(dt)) return true;
+  return (cfg2.missionWeekdays||[1,2,3,4,5]).includes(new Date(dt).getDay());
 }
-function getTarget(cfg, y, m) {
-  const k=`${y}-${pad(m)}`;
-  if (cfg.monthlyTargets&&cfg.monthlyTargets[k]!==undefined) return Number(cfg.monthlyTargets[k]);
+
+function calcAutoTarget(cfg2, y, m) {
   const days=new Date(y,m,0).getDate(); let c=0;
-  for(let i=1;i<=days;i++) if(isMD(cfg,`${y}-${pad(m)}-${pad(i)}`)) c++;
+  for(let i=1;i<=days;i++) if(isMD(cfg2,`${y}-${pad(m)}-${pad(i)}`)) c++;
   return c;
 }
 
-/* Session state */
-let sessionLaps = 0;
-let isResubmitMode = false;  // 재제출 모드: 0바퀴 제출 허용
-let remoteConfig = null;
+function getTarget(cfg2, y, m) {
+  const k=`${y}-${pad(m)}`;
+  if(cfg2.monthlyTargets&&cfg2.monthlyTargets[k]!==undefined&&cfg2.monthlyTargets[k]!=='') return Number(cfg2.monthlyTargets[k]);
+  return calcAutoTarget(cfg2, y, m);
+}
 
-function cfg() { return remoteConfig || lc() || defConfig(); }
+/* ══════════════════════════════════════════════
+   PIN
+══════════════════════════════════════════════ */
+let pinBuf='', pinMode='verify', pendingPin='';
 
-/* ══════════════════════════════════════════
-   BOOT SEQUENCE
-══════════════════════════════════════════ */
-async function boot() {
-  const url = gasUrl();
-  if (!url) {
-    // No URL → show URL input screen
-    show('screen-url');
-    return;
-  }
-  // Try fetch config
-  show('screen-loading');
-  document.getElementById('loadText').textContent = '설정을 불러오는 중…';
-  try {
-    const freshCfg = await fetchConfig(url);
-    remoteConfig = freshCfg;
-    sc(freshCfg);
-  } catch(e) {
-    // Use cache if available
-    const cached = lc();
-    if (cached) {
-      remoteConfig = cached;
-      document.getElementById('loadText').textContent = '캐시된 설정 사용 중…';
-      await sleep(400);
-    } else {
-      remoteConfig = defConfig();
-    }
-  }
-  // Check if user already set up
-  const d = ls();
-  if (d.name && d.className) {
-    goMain();
-  } else {
-    buildSetup();
-    show('screen-setup');
+function initPin(){
+  const c=lc();
+  if(!c.pin||c.pin.length<4){pinMode='setup';document.getElementById('pinLbl').textContent='새 PIN 4자리를 설정하세요';document.getElementById('pinHint').textContent='처음 실행 시 PIN을 설정합니다.';}
+  else{pinMode='verify';document.getElementById('pinLbl').textContent='관리자 PIN 입력';}
+  pinBuf='';updDots();
+}
+
+function pk(k){ if(pinBuf.length>=4)return; pinBuf+=k; updDots(); if(pinBuf.length===4) setTimeout(pe,150); }
+function pd_del(){ pinBuf=pinBuf.slice(0,-1); updDots(); document.getElementById('pinErr').textContent=''; }
+function updDots(){ for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.toggle('on',i<pinBuf.length); }
+
+function pe(){
+  const c=lc();
+  if(pinMode==='verify'){
+    if(pinBuf===c.pin) goMain();
+    else{document.getElementById('pinErr').textContent='PIN이 올바르지 않습니다.';pinBuf='';updDots();}
+  } else if(pinMode==='setup'||pinMode==='change'){
+    if(!pendingPin){pendingPin=pinBuf;pinBuf='';updDots();document.getElementById('pinLbl').textContent='PIN을 한 번 더 입력하세요';}
+    else if(pinBuf===pendingPin){
+      c.pin=pinBuf;sc(c);pendingPin='';
+      if(pinMode==='change'){goMain();toast('✅ PIN이 변경되었습니다');}
+      else goMain();
+    }else{document.getElementById('pinErr').textContent='PIN이 일치하지 않습니다.';pendingPin='';pinBuf='';updDots();document.getElementById('pinLbl').textContent=(pinMode==='change')?'새 PIN 4자리':'새 PIN 4자리를 설정하세요';}
   }
 }
 
-async function fetchConfig(url) {
-  const res  = await fetch(`${url}?action=config`, {method:'GET',mode:'cors'});
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error||'Config fetch failed');
-  return json.config;
+function startPinChange(){
+  pinMode='change';pendingPin='';pinBuf='';updDots();
+  document.getElementById('pinErr').textContent='';
+  document.getElementById('pinHint').textContent='';
+  document.getElementById('pinLbl').textContent='새 PIN 4자리 입력';
+  document.getElementById('scMain').style.display='none';
+  document.getElementById('scPin').style.display='flex';
 }
 
-function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-
-function show(id) {
-  ['screen-loading','screen-url','screen-setup','screen-main'].forEach(s=>{
-    const el=document.getElementById(s);
-    el.style.display = s===id ? 'flex' : 'none';
-  });
+function lockAdmin(){
+  document.getElementById('scMain').style.display='none';
+  document.getElementById('scPin').style.display='flex';
+  pinMode='verify';pinBuf='';pendingPin='';updDots();
+  document.getElementById('pinLbl').textContent='관리자 PIN 입력';
+  document.getElementById('pinErr').textContent='';
 }
 
-/* ── URL SCREEN ── */
-function checkUrl(){ document.getElementById('btnConnect').disabled=!document.getElementById('urlInput').value.trim(); }
-
-async function connectUrl() {
-  const url = document.getElementById('urlInput').value.trim();
-  if (!url) return;
-  document.getElementById('btnConnect').disabled = true;
-  document.getElementById('btnConnect').textContent = '연결 중…';
-  try {
-    const cfg2 = await fetchConfig(url);
-    remoteConfig = cfg2; sc(cfg2);
-    const d = ls(); d.gasUrl = url; ss(d);
-    buildSetup();
-    show('screen-setup');
-  } catch(e) {
-    document.getElementById('btnConnect').textContent = '연결하기 →';
-    document.getElementById('btnConnect').disabled = false;
-    toast('❌ 연결 실패. 주소를 확인해주세요.','warn');
-  }
-}
-
-/* ── SETUP SCREEN ── */
-function buildSetup() {
-  const c = cfg();
-  document.getElementById('setupLogo').textContent = c.programName||'MISSION';
-  const sel = document.getElementById('setupClass');
-  sel.innerHTML = '<option value="">학반을 선택하세요</option>';
-  (c.classes||[]).forEach(cl=>{ const o=document.createElement('option');o.value=cl;o.textContent=cl;sel.appendChild(o); });
-}
-
-function checkSetup(){
-  const ok = document.getElementById('setupName').value.trim() && document.getElementById('setupClass').value;
-  document.getElementById('btnStart').disabled = !ok;
-}
-function tryStart(){ if(!document.getElementById('btnStart').disabled) startApp(); }
-
-function startApp() {
-  const name = document.getElementById('setupName').value.trim();
-  const cls  = document.getElementById('setupClass').value;
-  if (!name||!cls) return;
-  const d = ls(); d.name=name; d.className=cls; ss(d);
-  goMain();
-}
-
-/* ══════════════════════════════════════════
+/* ══════════════════════════════════════════════
    MAIN
-══════════════════════════════════════════ */
-function goMain() {
-  show('screen-main');
-  sessionLaps = 0;
-  isResubmitMode = false;
-  renderMain();
-  switchTab('today');
-  // 앱 열 때 미동기화 기록 자동 재시도
-  setTimeout(() => retrySyncUnsynced(), 1500);
+══════════════════════════════════════════════ */
+function goMain(){
+  document.getElementById('scPin').style.display='none';
+  document.getElementById('scMain').style.display='flex';
+  const c=lc();
+  document.getElementById('ahTitle').textContent=c.programName||'미션 관리자';
+  document.getElementById('ahSub').textContent=c.missionName||'교사용 관리 시스템';
+  document.getElementById('gasCode').textContent=getGasScript();
+  setSsbState(c.gasUrl?'idle':'none');
+  loadCfgForm();
+  document.getElementById('prxDate').value=getToday();
+  buildProxyCls();buildProxyLap();
+  gv('today');
 }
 
-function renderMain() {
-  const d = ls(), c = cfg();
-  document.title = (c.programName||'MISSION') + ' — ' + d.name;
-  document.getElementById('hdrName').textContent  = d.name;
-  document.getElementById('hdrClass').textContent = d.className;
-  document.getElementById('mcName').textContent   = c.missionName||'오늘의 미션';
-  document.getElementById('dateLabel').textContent = todayLabel();
-  const rec = (d.history||{})[today()];
-  document.getElementById('dateStatus').textContent =
-    rec?.submitted ? ((rec.laps||0)>=(c.lapsRequired||3)?'✅ 완료':'📤 제출됨') : '미션 대기 중';
-  if (rec?.submitted) showSubmitted(rec);
-  else showNormal(rec);
+function gv(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  if(name==='today')   initToday();
+  if(name==='monthly') initMonthly();
+  if(name==='settings') loadCfgForm();
 }
 
-/* ── NORMAL ── */
-function showNormal(rec) {
-  document.getElementById('stNormal').style.display='block';
-  document.getElementById('stSubmitted').style.display='none';
-  // 재제출 모드가 아닐 때만 기존 기록으로 복원 (재제출 시엔 resubmit()에서 이미 세팅)
-  if(!isResubmitMode){
-    sessionLaps = rec ? (rec.laps !== undefined ? rec.laps : 0) : sessionLaps;
-  }
-  renderRings(); updateStatus(); updateSubBtn();
+/* ── Sync Status Bar ── */
+function setSsbState(s){
+  const dot=document.getElementById('ssbDot'),txt=document.getElementById('ssbText'),btn=document.getElementById('btnSyncAll');
+  dot.className='ssb-dot';
+  if(s==='none'){txt.textContent='GAS URL을 설정하면 학생 앱에 설정이 자동 반영됩니다';btn.disabled=true;}
+  if(s==='idle'){dot.classList.add('ok');txt.textContent='동기화 준비됨 — 설정 변경 후 동기화 버튼을 누르세요';btn.disabled=false;}
+  if(s==='syn'){dot.classList.add('syn');txt.textContent='구글 시트에 설정 저장 중…';btn.disabled=true;}
+  if(s==='ok'){dot.classList.add('ok');txt.textContent='✅ 동기화 완료 — 학생 앱에 설정이 반영되었습니다';btn.disabled=false;}
+  if(s==='err'){dot.classList.add('err');txt.textContent='❌ 동기화 실패 — GAS URL을 확인하세요';btn.disabled=false;}
 }
 
-function renderRings() {
-  const c=cfg(), req=c.lapsRequired||3;
-  const CIRC=2*Math.PI*28;
-  const colors=['#ff6b35','#ffd166','#06d6a0'];
-  let html='';
-  for(let n=1;n<=req;n++){
-    const done=sessionLaps>=n;
-    const col=colors[Math.min(n-1,2)];
-    html+=`<div class="lr ${done?'done':''}" onclick="addLap()" style="opacity:${done?1:sessionLaps===n-1?.9:.38}">
-      <svg width="70" height="70" viewBox="0 0 70 70">
-        <circle class="r-bg" cx="35" cy="35" r="28"/>
-        <circle class="r-fill" cx="35" cy="35" r="28"
-          stroke="${done?col:'rgba(255,255,255,.12)'}"
-          stroke-dasharray="${CIRC}" stroke-dashoffset="${done?0:CIRC}"/>
-        <text class="r-num" x="35" y="36" fill="${done?'#fff':'rgba(255,255,255,.3)'}">${done?'✓':n}</text>
-      </svg>
-      <div class="r-lbl">${n}바퀴</div>
-    </div>`;
-  }
-  document.getElementById('lapRings').innerHTML=html;
-  document.getElementById('btnUndo').style.display=sessionLaps>0?'block':'none';
-  document.getElementById('tapHint').style.display=sessionLaps>=req?'none':'flex';
-}
-
-function updateStatus(){
-  const c=cfg(), req=c.lapsRequired||3;
-  const dot=document.getElementById('sdot'), txt=document.getElementById('stext');
-  dot.className='sdot';
-  if(isResubmitMode && sessionLaps===0){
-    dot.classList.add('wait');
-    txt.textContent='0바퀴로 제출하면 해당 날짜 기록이 삭제됩니다.';
-  } else if(sessionLaps===0){
-    dot.classList.add('wait');
-    txt.textContent='아직 미션을 시작하지 않았어요.';
-  } else if(sessionLaps<req){
-    dot.classList.add('part');
-    txt.textContent=`${sessionLaps}/${req}바퀴 완료 — 조금만 더!`;
-  } else {
-    dot.classList.add('comp');
-    txt.textContent=`🎉 ${req}바퀴 완주! 아래 버튼으로 제출하세요.`;
-  }
-}
-
-function updateSubBtn(){
-  const c=cfg(), req=c.lapsRequired||3;
-  const btn=document.getElementById('btnSub');
-  btn.className='btn-sub';
-  if(isResubmitMode && sessionLaps===0){
-    // 재제출 모드에서 0바퀴 — 경고색 버튼으로 클릭 가능
-    btn.style.cssText='';
-    btn.classList.add('partial');
-    btn.style.background='rgba(239,71,111,.15)';
-    btn.style.color='var(--danger)';
-    btn.style.border='2px solid rgba(239,71,111,.4)';
-    btn.textContent='🗑 0바퀴로 수정 제출 (기록 삭제)';
-  } else if(sessionLaps===0){
-    btn.style.cssText='';
-    btn.classList.add('idle');
-    btn.textContent='바퀴를 기록한 뒤 제출하세요';
-  } else if(sessionLaps<req){
-    btn.style.cssText='';
-    btn.classList.add('partial');
-    btn.textContent=`📤 지금까지 기록 제출 (${sessionLaps}/${req}바퀴)`;
-  } else {
-    btn.style.cssText='';
-    btn.classList.add('complete');
-    btn.textContent='✅ 미션 완료! 제출하기';
-  }
-}
-
-function addLap(){
-  const req=(cfg().lapsRequired||3);
-  if(sessionLaps>=req) return;
-  sessionLaps++;
-  renderRings();updateStatus();updateSubBtn();
-  if(sessionLaps>=req){showConfetti();toast('🎉 '+req+'바퀴 완주! 제출 버튼을 눌러주세요!');}
-}
-function undoLap(){
-  if(sessionLaps<=0) return;
-  sessionLaps--;
-  renderRings();updateStatus();updateSubBtn();
-}
-
-/* ── SUBMITTED ── */
-function showSubmitted(rec){
-  document.getElementById('stNormal').style.display='none';
-  document.getElementById('stSubmitted').style.display='block';
-  const c=cfg(), req=c.lapsRequired||3;
-  // laps가 0일 수 있으므로 ||0 대신 명시적 처리
-  const laps = (rec.laps !== undefined && rec.laps !== null) ? rec.laps : 0;
-  const isUpdate = rec.isUpdate || false;
-
-  // 바퀴 도트
-  let dots='';
-  if(laps===0){
-    // 0바퀴: 삭제/미수행 표시
-    dots=`<div style="font-size:.8rem;color:var(--danger);background:rgba(239,71,111,.1);border:1px solid rgba(239,71,111,.25);border-radius:20px;padding:4px 14px;font-weight:700">기록 없음 (0바퀴)</div>`;
-  } else {
-    for(let i=1;i<=req;i++) dots+=`<div class="sub-dot ${i<=laps?'on':'off'}">${i<=laps?'✓':i}</div>`;
-  }
-  document.getElementById('subDots').innerHTML=dots;
-
-  // 상태 메시지
-  let statusLine;
-  if(laps===0) statusLine='해당 날짜 기록이 삭제되었습니다.';
-  else if(laps>=req) statusLine='🎉 오늘 미션을 완전히 달성했어요!';
-  else statusLine=`${laps}/${req}바퀴 기록됨`;
-
-  const updateBadge = isUpdate
-    ? `<span style="display:inline-block;background:rgba(255,209,102,.18);color:var(--accent2);border-radius:10px;padding:1px 9px;font-size:.68rem;font-weight:700;margin-bottom:5px">🔄 수정 제출됨</span><br>`
-    : '';
-
-  document.getElementById('subInfo').innerHTML =
-    updateBadge +
-    `제출 시각: <strong>${rec.submittedAt||'—'}</strong><br>${statusLine}`;
-
-  syncUi(rec.synced ? 'ok' : 'idle');
-}
-
-function syncUi(s){
-  const dot=document.getElementById('syncDot'),txt=document.getElementById('syncText');
-  dot.className='sdot-sm';
-  if(s==='ok'){dot.classList.add('ok');txt.textContent='구글 시트에 기록 완료 ✓';}
-  if(s==='syn'){dot.classList.add('syn');txt.textContent='기록 중…';}
-  if(s==='err'){dot.classList.add('err');txt.textContent='연동 실패 (URL 확인)';}
-  if(s==='idle'){txt.textContent='구글 시트 URL을 설정하면 기록됩니다';}
-}
-
-async function submitMission(){
-  const c=cfg();
-  const req=c.lapsRequired||3;
-  const laps=sessionLaps;
-
-  // 0바퀴는 재제출 모드일 때만 허용
-  if(laps<=0 && !isResubmitMode) return;
-
-  // 0바퀴 재제출 최종 확인
-  if(laps===0 && isResubmitMode){
-    if(!confirm('0바퀴로 제출하면 이 날짜의 기록이 삭제됩니다.\n계속하시겠습니까?')) return;
-  }
-
-  const d=ls();
-  const dt=today(), time=nowTime();
-
-  const existing = d.history?.[dt];
-  const prevLaps = (existing && existing.laps !== undefined) ? existing.laps : null;
-
-  // 동일한 값으로 재제출 방지
-  if(isResubmitMode && prevLaps === laps){
-    toast('변경사항이 없습니다.','warn');
-    return;
-  }
-
-  const isUpdate = isResubmitMode && prevLaps !== null;
-  if(!d.history) d.history={};
-  d.history[dt]={ laps, submittedAt:time, submitted:true, synced:false, isUpdate };
-  ss(d);
-
-  // 재제출 모드 해제
-  isResubmitMode = false;
-
-  showSubmitted(d.history[dt]);
-  document.getElementById('dateStatus').textContent =
-    laps===0 ? '🗑 기록 삭제됨' : laps>=req ? '✅ 완료' : '📤 제출됨';
-
-  const url=gasUrl();
-  if(!url){ syncUi('idle'); return; }
-
-  syncUi('syn');
+/* ── Push Config to GAS ── */
+async function pushConfig(){
+  const c=lc();
+  if(!c.gasUrl){toast('⚠️ GAS URL을 먼저 설정하세요','warn');return;}
+  setSsbState('syn');
+  // Build config object (exclude admin-only fields)
+  const payload={
+    programName:c.programName, missionName:c.missionName,
+    lapsRequired:c.lapsRequired, missionWeekdays:c.missionWeekdays,
+    classes:c.classes, monthlyTargets:c.monthlyTargets,
+    achieveThreshold:c.achieveThreshold,
+    excludeDates:c.excludeDates||[], extraDates:c.extraDates||[]
+  };
   try{
-    await fetch(url, {
-      method:'POST', mode:'no-cors',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        date:dt, name:d.name, className:d.className,
-        laps, lapsRequired:req, submittedAt:time,
-        isProxy:false, isUpdate
-      })
-    });
-    const fresh=ls();
-    if(fresh.history?.[dt]){ fresh.history[dt].synced=true; ss(fresh); }
-    syncUi('ok');
-    if(laps===0){
-      toast(`🗑 ${prevLaps}바퀴 → 0바퀴 (기록 삭제) 완료`);
-    } else if(isUpdate && prevLaps !== null){
-      toast(`🔄 기록 수정 완료! ${prevLaps}바퀴 → ${laps}바퀴`);
-    } else {
-      toast('✅ 구글 시트에 기록 완료!');
-    }
-  } catch {
-    syncUi('err');
-    toast('❌ 연동 실패 — 인터넷 확인','warn');
-  }
+    const res=await fetch(c.gasUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'saveConfig',config:payload})});
+    setSsbState('ok');toast('✅ 구글 시트에 설정 저장 완료! 학생 앱에 반영됩니다.');
+    setTimeout(()=>setSsbState('idle'),4000);
+  }catch(e){setSsbState('err');toast('❌ 동기화 실패','warn');}
 }
 
-function resubmit(){
-  const d=ls(), dt=today();
-  const existing = d.history?.[dt];
+/* ══════════════════════════════════════════════
+   GAS 통신 헬퍼
+   GAS는 script.google.com → script.googleusercontent.com 리다이렉트를 함.
+   fetch()는 기본적으로 redirect:follow 이므로 정상 동작하지만,
+   타임아웃과 에러 메시지를 강화함.
+══════════════════════════════════════════════ */
+async function gasGet(url, params, timeoutMs) {
+  if (!url) throw new Error('GAS URL이 설정되지 않았습니다. 설정 탭에서 URL을 입력하세요.');
+  timeoutMs = timeoutMs || 15000;
 
-  // 기존 laps 복원 (0 포함)
-  sessionLaps = (existing && existing.laps !== undefined) ? existing.laps : 0;
+  // 쿼리스트링 조합
+  const qs = Object.entries(params).map(([k,v]) => k + '=' + encodeURIComponent(v)).join('&');
+  const fullUrl = url + (url.includes('?') ? '&' : '?') + qs + '&t=' + Date.now(); // 캐시 방지
 
-  // 재제출 모드 활성화 → 0바퀴 제출 허용
-  isResubmitMode = true;
-
-  // 제출 상태 해제
-  if(existing){
-    existing.submitted = false;
-    ss(d);
-  }
-
-  document.getElementById('dateStatus').textContent='기록 수정 중…';
-  showNormal(existing);
-  toast(`↩ 기존 기록(${sessionLaps}바퀴) 불러옴. 수정 후 다시 제출하세요.`);
-}
-
-/* ══════════════════════════════════════════
-   전체 새로고침 + 미동기화 재시도
-══════════════════════════════════════════ */
-async function globalRefresh() {
-  const btn = document.getElementById('btnRefreshAll');
-  btn.classList.add('spin');
-  btn.disabled = true;
-  let msgs = [];
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    // ① 미동기화 기록 재시도
-    const retried = await retrySyncUnsynced();
-    if (retried > 0) msgs.push(`${retried}건 동기화`);
+    const res = await fetch(fullUrl, {
+      method: 'GET',
+      redirect: 'follow',
+      signal: controller.signal
+    });
+    clearTimeout(timer);
 
-    // ② 설정 재로드 (학반 목록 등)
-    const url = gasUrl();
-    if (url) {
-      try {
-        const freshCfg = await fetchConfig(url);
-        remoteConfig = freshCfg;
-        sc(freshCfg);
-        msgs.push('설정 갱신');
-      } catch(_) {}
-    }
+    if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + res.statusText);
 
-    // ③ 현재 화면 갱신
-    renderMain();
-    const activeTab = document.querySelector('.tab.active')?.id?.replace('tab-','');
-    if (activeTab === 'history') renderHistory();
-    if (activeTab === 'lb') { lbData = []; await fetchLb(); msgs.push('순위표 갱신'); }
+    const text = await res.text();
+    let json;
+    try { json = JSON.parse(text); }
+    catch(e) { throw new Error('응답이 JSON 형식이 아닙니다. GAS 배포 상태를 확인하세요.\n응답 앞부분: ' + text.substring(0, 100)); }
 
-    toast('🔄 새로고침 완료' + (msgs.length ? ` (${msgs.join(', ')})` : ''));
+    if (!json.success) throw new Error('GAS 오류: ' + (json.error || '알 수 없는 오류'));
+    return json;
+
   } catch(e) {
-    toast('⚠️ 일부 항목 갱신 실패','warn');
+    clearTimeout(timer);
+    if (e.name === 'AbortError') throw new Error('연결 시간 초과 (15초). 인터넷 연결 또는 GAS URL을 확인하세요.');
+    throw e;
+  }
+}
+
+/* ── 연결 테스트 ── */
+async function testConnection() {
+  const c = lc();
+  if (!c.gasUrl) { toast('⚠️ GAS URL을 먼저 설정하세요', 'warn'); return; }
+  setSsbState('syn');
+  document.getElementById('ssbText').textContent = '연결 테스트 중…';
+  try {
+    const json = await gasGet(c.gasUrl, { action: 'ping' });
+    setSsbState('ok');
+    document.getElementById('ssbText').textContent = '✅ 연결 성공! 구글 시트와 정상 연결됨';
+    toast('✅ GAS 연결 성공!');
+    setTimeout(() => setSsbState('idle'), 3000);
+  } catch(e) {
+    setSsbState('err');
+    document.getElementById('ssbText').textContent = '❌ ' + e.message;
+    toast('❌ 연결 실패', 'warn');
+  }
+}
+
+async function testConnectionFromSettings() {
+  const url = document.getElementById('cfgGas').value.trim();
+  if (!url) { toast('⚠️ URL을 입력하세요', 'warn'); return; }
+  const btn = document.getElementById('btnTestSettings');
+  btn.textContent = '테스트 중…'; btn.disabled = true;
+  const resultEl = document.getElementById('connTestResult');
+  resultEl.style.display = 'block';
+  resultEl.style.color = 'var(--dim)';
+  resultEl.innerHTML = '⏳ 구글 시트에 연결 중…';
+
+  try {
+    const json = await gasGet(url, { action: 'ping' });
+    resultEl.style.color = 'var(--ok)';
+    resultEl.innerHTML = '✅ <strong>연결 성공!</strong><br>GAS 서버가 정상 응답했습니다.<br><span style="font-size:.65rem;opacity:.7">응답시각: ' + (json.timestamp || new Date().toISOString()) + '</span>';
+    toast('✅ 연결 성공! 설정을 저장하세요.');
+  } catch(e) {
+    resultEl.style.color = 'var(--err)';
+    resultEl.innerHTML = '❌ <strong>연결 실패</strong><br>' + e.message.replace(/\n/g, '<br>') + '<br><br>' +
+      '<span style="font-size:.65rem;color:var(--a2)">확인사항:<br>' +
+      '• URL이 /exec 로 끝나는지 확인<br>' +
+      '• Apps Script → 배포 → 액세스: 모든 사용자<br>' +
+      '• 코드 수정 후 버전 업데이트 배포 필요</span>';
   } finally {
-    btn.classList.remove('spin');
+    btn.textContent = '🔌 연결 테스트'; btn.disabled = false;
+  }
+}
+
+async function saveAndSync() {
+  saveCfg();
+  await pushConfig();
+}
+
+/* ── 전체 새로고침 ── */
+async function globalRefresh() {
+  const c = lc();
+  if (!c.gasUrl) { toast('⚠️ GAS URL을 먼저 설정하세요', 'warn'); return; }
+  const btn = document.getElementById('btnGlobalRefresh');
+  btn.textContent = '⏳ 새로고침 중…';
+  btn.disabled = true;
+  try {
+    // 오늘 + 이번달 데이터 동시 요청
+    await Promise.all([ fetchToday(true), fetchMonthly(true) ]);
+    toast('✅ 전체 데이터 새로고침 완료');
+  } catch(e) {
+    toast('❌ 새로고침 실패: ' + e.message, 'warn');
+  } finally {
+    btn.textContent = '🔄 전체 새로고침';
     btn.disabled = false;
   }
 }
 
-// 미동기화된 모든 기록을 GAS에 재전송
-async function retrySyncUnsynced() {
-  const url = gasUrl();
-  if (!url) return 0;
-  const d = ls(), c = cfg();
-  const req = c.lapsRequired || 3;
-  let count = 0;
+/* ══════════════════════════════════════════════
+   TODAY
+══════════════════════════════════════════════ */
+let todayFilter='__all__', todayData=[];
 
-  const entries = Object.entries(d.history || {});
-  for (const [dt, rec] of entries) {
-    // submitted이지만 synced가 false인 기록만 재시도
-    if (!rec.submitted || rec.synced) continue;
-
-    try {
-      await fetch(url, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: dt,
-          name: d.name,
-          className: d.className,
-          laps: rec.laps,
-          lapsRequired: req,
-          submittedAt: rec.submittedAt || '',
-          isProxy: false,
-          isUpdate: rec.isUpdate || false
-        })
-      });
-      // no-cors라 성공 여부 확인 불가 → 낙관적으로 synced=true 처리
-      rec.synced = true;
-      count++;
-    } catch(_) {
-      // 실패 시 다음 기회에 재시도
-    }
-  }
-
-  if (count > 0) {
-    ss(d);
-    // 오늘 기록이 재시도됐으면 syncUi 갱신
-    const todayRec = d.history?.[today()];
-    if (todayRec?.submitted) syncUi(todayRec.synced ? 'ok' : 'err');
-  }
-  return count;
+function initToday(){
+  const c=lc();
+  document.getElementById('tdDate').textContent=todayLabel();
+  document.getElementById('tdMission').textContent=`미션: ${c.missionName||'…'}`;
+  buildFilter('todayCls',c.classes,todayFilter,v=>{todayFilter=v;renderTodayTable();});
+  renderTodayStats();renderTodayTable();
 }
 
-
-let hm={y:new Date().getFullYear(),m:new Date().getMonth()+1};
-
-function renderHistory(){
-  const d=ls(),c=cfg();
-  const {y,m}=hm;
-  const prefix=`${y}-${pad(m)}`;
-  const td=today();
-  const days=new Date(y,m,0).getDate();
-  const target=getTarget(c,y,m);
-  document.getElementById('hMonthLabel').textContent=`${y}년 ${m}월`;
-  let comp=0,laps=0;
-  for(let i=1;i<=days;i++){
-    const dt=`${prefix}-${pad(i)}`; if(dt>td)break;
-    const r=(d.history||{})[dt];
-    if(r){laps+=r.laps||0;if((r.laps||0)>=(c.lapsRequired||3))comp++;}
-  }
-  const pct=target>0?Math.min(100,Math.round(comp/target*100)):0;
-  document.getElementById('hStats').innerHTML=`
-    <div class="hsc"><div class="v" style="color:var(--success)">${comp}</div><div class="l">완료일</div></div>
-    <div class="hsc"><div class="v" style="color:var(--accent2)">${target}</div><div class="l">이달 목표</div></div>
-    <div class="hsc"><div class="v" style="color:var(--info)">${pct}<span style="font-size:.75rem">%</span></div><div class="l">달성률</div></div>`;
-  const fdow=new Date(y,m-1,1).getDay();
-  let cal='';
-  for(let i=0;i<fdow;i++) cal+='<div class="cc empty"></div>';
-  for(let i=1;i<=days;i++){
-    const dt=`${prefix}-${pad(i)}`;
-    const fut=dt>td,mis=isMD(c,dt),ist=dt===td;
-    const r=(d.history||{})[dt], lp=r?r.laps||0:0;
-    let cls='cc';
-    if(!fut&&lp>=(c.lapsRequired||3)) cls+=' c3';
-    else if(!fut&&lp>0) cls+=' c'+lp;
-    if(fut) cls+=' future'; if(!mis&&!fut) cls+=' nm'; if(ist) cls+=' today';
-    if(mis&&fut) cls+=' ms';
-    const lbl=lp>=(c.lapsRequired||3)?'✓':lp>0?lp:i;
-    const sub=lp>0&&lp<(c.lapsRequired||3)?`<div class="csub">${lp}바퀴</div>`:'';
-    cal+=`<div class="${cls}">${lbl}${sub}</div>`;
-  }
-  document.getElementById('hCal').innerHTML=cal;
-}
-function changeHM(d){hm.m+=d;if(hm.m>12){hm.m=1;hm.y++;}if(hm.m<1){hm.m=12;hm.y--;}renderHistory();}
-
-/* ── LEADERBOARD ── */
-let lbFilter='__all__', lbData=[];
-let lbvm={y:new Date().getFullYear(),m:new Date().getMonth()+1};
-
-function initLb(){
-  const c=cfg();
-  document.getElementById('lbLabel').textContent=`🏆 ${lbvm.y}년 ${lbvm.m}월`;
-  const classes=['전체',...(c.classes||[])];
-  document.getElementById('lbTabs').innerHTML=classes.map((cl,i)=>{
-    const v=i===0?'__all__':cl;
-    return `<button class="ct ${lbFilter===v?'active':''}" onclick="setLbF('${v}')">${cl}</button>`;
-  }).join('');
-  if(lbData.length) renderLb();
-}
-
-function setLbF(v){lbFilter=v;initLb();}
-
-async function fetchLb(){
-  const url=gasUrl();
-  if(!url){toast('⚠️ GAS URL을 설정하세요','warn');return;}
-  const btn=document.getElementById('lbBtn');
-  btn.classList.add('sp');
-  document.getElementById('lbList').innerHTML='<div class="lb-empty">⏳ 불러오는 중…</div>';
-  const c=cfg(), m=`${lbvm.y}-${pad(lbvm.m)}`,req=c.lapsRequired||3;
-  const target=getTarget(c,lbvm.y,lbvm.m);
+async function fetchToday(silent){
+  const c=lc();
+  if(!silent) document.getElementById('stuTable').innerHTML='<div class="loading-r"><div class="spn"></div> 데이터 불러오는 중…</div>';
   try{
-    const res=await fetch(`${url}?action=leaderboard&month=${m}&lapsRequired=${req}`);
-    const json=await res.json();
-    if(!json.success) throw new Error(json.error);
-    lbData=(json.data||[]).map(r=>({...r,pct:target>0?Math.min(100,Math.round(r.completeDays/target*100)):0}));
-    renderLb(); toast('✅ 순위표 업데이트 완료');
-  }catch(e){document.getElementById('lbList').innerHTML='<div class="lb-empty">❌ 불러오기 실패<br>인터넷 연결을 확인하세요</div>';toast('❌ 실패','warn');}
-  finally{btn.classList.remove('sp');}
-}
-
-function renderLb(){
-  const d=ls();
-  const filtered=lbFilter==='__all__'?lbData:lbData.filter(r=>r.className===lbFilter);
-  const sorted=[...filtered].sort((a,b)=>b.completeDays-a.completeDays||b.totalLaps-a.totalLaps);
-
-  // 동점자 순위 계산 함수
-  function calcRank(idx) {
-    if(idx === 0) return 1;
-    const prev = sorted[idx-1];
-    const cur  = sorted[idx];
-    if(cur.completeDays === prev.completeDays && cur.totalLaps === prev.totalLaps){
-      return calcRank(idx-1); // 동점 → 앞 학생과 같은 순위
+    const json = await gasGet(c.gasUrl, { action:'today', date:getToday(), lapsRequired:c.lapsRequired||3 });
+    todayData = json.data || [];
+    renderTodayStats(); renderTodayTable();
+    if(!silent) toast('✅ 오늘 데이터 ' + todayData.length + '건 로드 완료');
+  } catch(e) {
+    if(!silent){
+      document.getElementById('stuTable').innerHTML =
+        '<div class="empty-s" style="color:var(--err)">❌ ' + e.message + '</div>';
+      toast('❌ 불러오기 실패', 'warn');
     }
-    return idx + 1; // 다름 → 실제 인덱스 기반 순위 (건너뜀 포함)
+    throw e;
   }
-
-  const myIdx=sorted.findIndex(r=>r.name===d.name&&r.className===d.className);
-  const myCard=document.getElementById('myCard');
-  if(myIdx>=0){
-    const me=sorted[myIdx];
-    const myRankNum = calcRank(myIdx);
-    myCard.classList.add('show');
-    document.getElementById('myInfo').textContent=`${me.completeDays}일 완료 · ${me.pct}% · ${me.totalLaps}바퀴`;
-    document.getElementById('myRank').innerHTML=`${myRankNum}<span>위</span>`;
-  }else myCard.classList.remove('show');
-
-  const em=['🥇','🥈','🥉'];
-  document.getElementById('lbList').innerHTML=sorted.length?sorted.map((r,i)=>{
-    const rank=calcRank(i);
-    const tc=rank<=3?'top'+rank:'', nc=rank<=3?'r'+rank:'';
-    const bc=r.pct>=100?'var(--success)':r.pct>=50?'var(--accent2)':'var(--accent)';
-    const isme=r.name===d.name&&r.className===d.className;
-    const rankLabel = rank<=3 ? em[rank-1] : rank;
-    return `<div class="lrow ${tc}">
-      <div class="lr-num ${nc}">${rankLabel}</div>
-      <div class="lr-info">
-        <div class="lr-name">${r.name}${isme?'<span class="me-bdg">나</span>':''}</div>
-        <div class="lr-sub">${r.className} · ${r.completeDays}일 · ${r.totalLaps}바퀴</div>
-      </div>
-      <div class="lr-r">
-        <div class="lr-pct" style="color:${bc}">${r.pct}%</div>
-        <div class="lr-bar-bg"><div class="lr-bar" style="width:${r.pct}%;background:${bc}"></div></div>
-      </div>
-    </div>`;
-  }).join(''):'<div class="lb-empty">📭 이 학반의 데이터가 없습니다</div>';
 }
 
-/* ── TAB ── */
-function switchTab(t){
-  ['today','history','lb'].forEach(n=>{
-    document.getElementById('tab-'+n).classList.toggle('active',n===t);
-    document.getElementById('view-'+n).style.display=n===t?'':'none';
+// 통계와 테이블이 같은 학생 목록을 기준으로 계산
+function buildAllStudents() {
+  const c = lc();
+  const subMap = {};
+  todayData.forEach(r => { subMap[r.name + '|' + r.className] = r; });
+  const all = [...c.roster];
+  todayData.forEach(r => {
+    if (!all.find(s => s.name === r.name && s.className === r.className))
+      all.push({ name: r.name, className: r.className });
   });
-  if(t==='history') renderHistory();
-  if(t==='lb') initLb();
+  return { all, subMap };
 }
 
-/* ── SETTINGS PANEL ── */
-function openSettings(){
-  const d=ls(),c=cfg();
-  document.getElementById('pName').value=d.name||'';
-  document.getElementById('pUrl').value=d.gasUrl||'';
-  const sel=document.getElementById('pClass');
-  sel.innerHTML='';
-  (c.classes||[]).forEach(cl=>{const o=document.createElement('option');o.value=cl;o.textContent=cl;if(cl===d.className)o.selected=true;sel.appendChild(o);});
-  const cachedAt=lc()?._cachedAt;
-  document.getElementById('cfgStatus').innerHTML=cachedAt
-    ?`<strong>✅ 설정 연동됨</strong><br>마지막 업데이트: ${new Date(cachedAt).toLocaleString('ko-KR')}<br>앱을 열 때마다 최신 설정을 자동으로 불러옵니다.`
-    :'<strong>⚠️ 오프라인 상태</strong><br>설정을 불러오지 못했습니다.';
-  document.getElementById('panelOv').classList.add('on');
-}
-function closeSettings(){ document.getElementById('panelOv').classList.remove('on'); }
-function saveSettings(){
-  const d=ls(),name=document.getElementById('pName').value.trim(),cls=document.getElementById('pClass').value,url=document.getElementById('pUrl').value.trim();
-  if(name)d.name=name; if(cls)d.className=cls; d.gasUrl=url; ss(d);
-  closeSettings(); renderMain(); toast('✅ 저장되었습니다');
-}
-
-// 로그아웃: 이름·학반만 지우고 기록·설정은 보존
-// → 다시 로그인하면 기록이 복구됨
-function logout(){
-  closeSettings();
-  const d=ls();
-  d.name=''; d.className=''; ss(d);
-  sessionLaps=0;
-  // 설정 캐시는 유지 (GAS URL, config)
-  show('screen-setup');
-  buildSetup();
-  // 이름·학반 입력란 초기화
-  document.getElementById('setupName').value='';
-  document.getElementById('setupClass').selectedIndex=0;
-  document.getElementById('btnStart').disabled=true;
-  toast('✅ 로그아웃 되었습니다');
+function renderTodayStats() {
+  const c = lc(), req = c.lapsRequired || 3;
+  const { all, subMap } = buildAllStudents();
+  const filtered = todayFilter === '__all__' ? all : all.filter(s => s.className === todayFilter);
+  const total = filtered.length;
+  let done = 0, part = 0;
+  filtered.forEach(s => {
+    const rec = subMap[s.name + '|' + s.className];
+    // laps가 undefined면 미제출(-1로 구분)
+    const laps = rec !== undefined ? (rec.laps ?? 0) : -1;
+    if (laps >= req) done++;
+    else if (laps > 0) part++;
+  });
+  const notSubmitted = total - done - part;
+  const pct = total > 0 ? Math.round(done / total * 100) : 0;
+  document.getElementById('pcCnt').textContent = `${done} / ${total}명`;
+  document.getElementById('progFill').style.width = pct + '%';
+  document.getElementById('todayStats').innerHTML = `
+    <div class="sc"><div class="sv" style="color:var(--ok)">${done}</div><div class="sl">완료</div></div>
+    <div class="sc"><div class="sv" style="color:var(--a2)">${part}</div><div class="sl">진행 중</div></div>
+    <div class="sc"><div class="sv" style="color:var(--dim)">${notSubmitted}</div><div class="sl">미제출</div></div>`;
 }
 
-function resetData(){ if(!confirm('내 모든 기록이 영구 삭제됩니다. 계속하시겠습니까?'))return; localStorage.removeItem(SKEY);localStorage.removeItem(SKEY+'_cfg');location.reload(); }
-
-/* ── UTILS ── */
-function toast(msg,type){
-  clearTimeout(toast._t);
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.className='toast'+(type==='warn'?' warn':'')+' show';
-  toast._t=setTimeout(()=>t.classList.remove('show'),2800);
+function renderTodayTable(){
+  const c=lc(),req=c.lapsRequired||3;
+  const { all, subMap } = buildAllStudents();
+  const filtered=todayFilter==='__all__'?all:all.filter(s=>s.className===todayFilter);
+  if(!filtered.length){document.getElementById('stuTable').innerHTML='<div class="empty-s">👤 학생 명단을 설정에서 추가하거나<br>🔄 새로고침으로 데이터를 불러오세요</div>';return;}
+  const groups=c.classes.length?c.classes:[...new Set(filtered.map(s=>s.className))];
+  let html=`<div class="st-hdr"><div>이름 / 학반</div><div style="text-align:center">바퀴</div><div style="text-align:right">상태</div></div>`;
+  groups.forEach(g=>{
+    const members=filtered.filter(s=>s.className===g); if(!members.length)return;
+    const gDone=members.filter(s=>(subMap[s.name+'|'+s.className]?.laps||0)>=req).length;
+    html+=`<div class="grp-sep">▸ ${g} (${gDone}/${members.length})</div>`;
+    members.forEach(s=>{
+      const r=subMap[s.name+'|'+s.className],laps=r?r.laps||0:0;
+      const dots=[1,2,3].map(n=>`<div class="pip ${laps>=n?'on'+n:'off'}">${laps>=n?'✓':n}</div>`).join('');
+      const sc3=laps>=req?'done':laps>0?'part':'none';
+      const st=laps>=req?'완료 ✓':laps>0?`${laps}/${req}`:'미제출';
+      const tm=r?.submittedAt?`<div style="font-size:.6rem;color:var(--dim)">${r.submittedAt}${r.isProxy?' (대리)':''}</div>`:'';
+      html+=`<div class="st-row"><div><div class="sn">${s.name}</div><div class="sc2">${s.className}${tm}</div></div><div class="laps-pip">${dots}</div><div class="sst ${sc3}">${st}</div></div>`;
+    });
+  });
+  document.getElementById('stuTable').innerHTML=html;
 }
-function showConfetti(){
-  const w=document.getElementById('cfWrap');
-  const cols=['#ff6b35','#ffd166','#06d6a0','#ef476f','#4ea8de','#fff'];
-  for(let i=0;i<70;i++){
-    const el=document.createElement('div'); el.className='cf';
-    el.style.cssText=`left:${Math.random()*100}vw;background:${cols[~~(Math.random()*cols.length)]};animation-duration:${1.5+Math.random()*2}s;animation-delay:${Math.random()*.6}s`;
-    w.appendChild(el); el.addEventListener('animationend',()=>el.remove());
+
+/* ══════════════════════════════════════════════
+   MONTHLY
+══════════════════════════════════════════════ */
+let vm={y:new Date().getFullYear(),m:new Date().getMonth()+1}, mFilter='__all__', mData=[];
+
+function initMonthly(){
+  const c=lc();
+  document.getElementById('mLbl').textContent=`${vm.y}년 ${vm.m}월`;
+  buildFilter('mCls',c.classes,mFilter,v=>{mFilter=v;renderMonthly();});
+  if(mData.length) renderMonthly();
+}
+function cm(d){vm.m+=d;if(vm.m>12){vm.m=1;vm.y++;}if(vm.m<1){vm.m=12;vm.y--;}initMonthly();}
+
+async function fetchMonthly(silent){
+  const c=lc();
+  const month=`${vm.y}-${pad(vm.m)}`,req=c.lapsRequired||3,target=getTarget(c,vm.y,vm.m);
+  const thresh=(c.achieveThreshold||100)/100;
+  if(!silent) document.getElementById('rankList').innerHTML='<div class="loading-r"><div class="spn"></div> 순위표 불러오는 중…</div>';
+  try{
+    const json = await gasGet(c.gasUrl, { action:'leaderboard', month, lapsRequired:req });
+    mData=(json.data||[]).map(r=>({...r,
+      pct:target>0?Math.min(100,Math.round(r.completeDays/target*100)):0,
+      achieved:target>0&&r.completeDays>=target*thresh
+    }));
+    renderMonthly();
+    if(!silent) toast('✅ 순위표 ' + mData.length + '명 로드 완료');
+  }catch(e){
+    if(!silent){
+      document.getElementById('rankList').innerHTML=
+        '<div class="empty-s" style="color:var(--err)">❌ ' + e.message + '</div>';
+      toast('❌ '+e.message,'warn');
+    }
+    throw e;
   }
 }
 
-document.getElementById('panelOv').addEventListener('click',e=>{
-  if(e.target===document.getElementById('panelOv')) closeSettings();
+function renderMonthly(){
+  const c=lc(),target=getTarget(c,vm.y,vm.m),thresh=(c.achieveThreshold||100)/100;
+  const filtered=mFilter==='__all__'?mData:mData.filter(r=>r.className===mFilter);
+  const sorted=[...filtered].sort((a,b)=>b.completeDays-a.completeDays||b.totalLaps-a.totalLaps);
+  const achieved=sorted.filter(r=>r.completeDays>=target*thresh&&target>0).length;
+  document.getElementById('mStats').innerHTML=`
+    <div class="sc"><div class="sv" style="color:var(--ok)">${achieved}</div><div class="sl">목표 달성</div></div>
+    <div class="sc"><div class="sv" style="color:var(--a2)">${sorted.reduce((s,r)=>s+r.totalLaps,0)}</div><div class="sl">총 바퀴</div></div>
+    <div class="sc"><div class="sv" style="color:var(--accent)">${target}</div><div class="sl">이달 목표</div></div>`;
+  const em=['🥇','🥈','🥉'];
+
+  // 동점자 처리: 완료일 + 총바퀴 모두 같으면 같은 순위
+  let displayRank = 1;
+  document.getElementById('rankList').innerHTML=sorted.length?sorted.map((r,i)=>{
+    // i>0이고 이전 학생과 완료일·바퀴수 모두 같으면 같은 순위 유지
+    if(i > 0){
+      const prev = sorted[i-1];
+      if(r.completeDays !== prev.completeDays || r.totalLaps !== prev.totalLaps){
+        displayRank = i + 1;  // 동점 아님 → 실제 순위(건너뜀 포함)
+      }
+      // 동점이면 displayRank 그대로 유지
+    }
+    const rank = displayRank;
+    const tc=rank<=3?'top'+rank:'', nc=rank<=3?'r'+rank:'';
+    const bc=r.pct>=100?'var(--ok)':r.pct>=50?'var(--a2)':'var(--org)';
+    const rankLabel = rank<=3 ? em[rank-1] : rank;
+    return `<div class="rrow ${tc}">
+      <div class="rn ${nc}">${rankLabel}</div>
+      <div class="ri2"><div class="rname">${r.name}${r.achieved?'<span style="font-size:.6rem;background:rgba(6,214,160,.2);color:var(--ok);border-radius:10px;padding:1px 6px;font-weight:700;margin-left:5px">달성</span>':''}</div><div class="rsub">${r.className} · ${r.completeDays}일 · ${r.totalLaps}바퀴</div></div>
+      <div class="rr"><div class="rpct" style="color:${bc}">${r.pct}%</div><div class="rbar-bg"><div class="rbar" style="width:${r.pct}%;background:${bc}"></div></div></div>
+    </div>`;
+  }).join(''):'<div class="empty-s">🔄 버튼을 눌러 순위표를 불러오세요</div>';
+}
+
+/* ══════════════════════════════════════════════
+   PROXY
+══════════════════════════════════════════════ */
+let prx={cls:'',stu:'',laps:0};
+
+function buildProxyCls(){
+  const c=lc(),g=document.getElementById('prxCls');
+  if(!c.classes.length){g.innerHTML='<div style="font-size:.76rem;color:var(--dim)">설정에서 학반을 추가하세요</div>';return;}
+  g.innerHTML=c.classes.map(cl=>`<button class="sel-b ${prx.cls===cl?'on':''}" onclick="prxSelCls('${cl.replace(/'/g,"\\'")}')"> ${cl}</button>`).join('');
+}
+function prxSelCls(cls){prx.cls=cls;prx.stu='';buildProxyCls();buildProxyStu();updPrxConfirm();}
+function buildProxyStu(){
+  const c=lc(),g=document.getElementById('prxStu');
+  if(!prx.cls){g.innerHTML='<div style="font-size:.76rem;color:var(--dim)">먼저 학반을 선택하세요</div>';return;}
+  const members=c.roster.filter(s=>s.className===prx.cls);
+  if(!members.length){g.innerHTML='<div style="font-size:.76rem;color:var(--dim)">설정 → 학생 명단에 추가하세요</div>';return;}
+  g.innerHTML=members.map(s=>`<button class="stu-b ${prx.stu===s.name?'on':''}" onclick="prxSelStu('${s.name.replace(/'/g,"\\'")}')"> ${s.name}</button>`).join('');
+}
+function prxSelStu(n){prx.stu=n;buildProxyStu();updPrxConfirm();}
+function buildProxyLap(){
+  const c=lc(),req=c.lapsRequired||3;
+  const cols=['org','a2','ok'];
+  document.getElementById('prxLap').innerHTML=Array.from({length:req},(_,i)=>{
+    const n=i+1,selCls=prx.laps===n?`sel${Math.min(n,3)}`:'';
+    return `<div class="ls-b ${selCls}" onclick="prxSelLap(${n})">${n}<span>${n}바퀴</span></div>`;
+  }).join('');
+}
+function prxSelLap(n){prx.laps=n;buildProxyLap();updPrxConfirm();}
+function updPrxConfirm(){
+  const ok=prx.cls&&prx.stu&&prx.laps;
+  document.getElementById('prxConfirm').style.display=ok?'block':'none';
+  document.getElementById('btnPrx').style.display=ok?'block':'none';
+  if(ok){
+    const c=lc(),dt=document.getElementById('prxDate').value||getToday();
+    document.getElementById('prxVal').textContent=`${prx.cls} · ${prx.stu} · ${dt} · ${prx.laps}/${c.lapsRequired||3}바퀴`;
+  }
+}
+async function doProxy(){
+  const c=lc();
+  if(!prx.cls||!prx.stu||!prx.laps)return;
+  if(!c.gasUrl){toast('⚠️ GAS URL을 설정하세요','warn');return;}
+  const dt=document.getElementById('prxDate').value||getToday();
+  if(!confirm(`[${prx.cls}] ${prx.stu}의 ${dt} 기록을 ${prx.laps}바퀴로 제출하시겠습니까?`))return;
+  const btn=document.getElementById('btnPrx');
+  btn.disabled=true;btn.textContent='제출 중…';
+  try{
+    await fetch(c.gasUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({date:dt,name:prx.stu,className:prx.cls,laps:prx.laps,lapsRequired:c.lapsRequired||3,submittedAt:nowTime(),isProxy:true})});
+    toast(`✅ ${prx.stu} 대리 제출 완료!`);
+    prx={cls:'',stu:'',laps:0};buildProxyCls();buildProxyStu();buildProxyLap();updPrxConfirm();
+  }catch(e){toast('❌ 제출 실패','warn');}
+  finally{btn.disabled=false;btn.textContent='✅ 대리 제출하기';}
+}
+
+/* ══════════════════════════════════════════════
+   SETTINGS FORM
+══════════════════════════════════════════════ */
+const MONTHS=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+
+function loadCfgForm(){
+  const c=lc();
+  document.getElementById('cfgGas').value=c.gasUrl||'';
+  document.getElementById('cfgProg').value=c.programName||'';
+  document.getElementById('cfgMis').value=c.missionName||'';
+  document.getElementById('cfgLaps').value=c.lapsRequired||3;
+  document.getElementById('cfgThresh').value=c.achieveThreshold||100;
+  const wd=c.missionWeekdays||[1,2,3,4,5];
+  for(let i=0;i<7;i++){const el=document.getElementById('dw'+i);if(el)el.checked=wd.includes(i);}
+  // Exception dates
+  renderExcList(c);
+  // Monthly targets — show current year ±1
+  const now=new Date();
+  let mtHtml='';
+  for(let yr=now.getFullYear()-1;yr<=now.getFullYear()+1;yr++){
+    for(let mo=1;mo<=12;mo++){
+      const key=`${yr}-${pad(mo)}`;
+      const auto=calcAutoTarget(c,yr,mo);
+      const stored=(c.monthlyTargets&&c.monthlyTargets[key]!==undefined)?c.monthlyTargets[key]:'';
+      const isNow=(yr===now.getFullYear()&&mo===now.getMonth()+1);
+      mtHtml+=`<div class="mt-item" ${isNow?'style="border:1px solid rgba(78,168,222,.3)"':''}>
+        <div class="mt-month">${yr}년 ${MONTHS[mo-1]}${isNow?'<span style="color:var(--accent);font-size:.6rem;margin-left:4px">이달</span>':''}</div>
+        <div class="mt-auto">자동: ${auto}일</div>
+        <div class="mt-row"><input type="number" class="mt-inp" id="mt_${key}" min="1" max="31" placeholder="${auto}" value="${stored}"><span class="mt-unit">일</span></div>
+      </div>`;
+    }
+  }
+  document.getElementById('mtGrid').innerHTML=mtHtml;
+  renderClsChips(c);renderRosterUi(c);populateRCls(c.classes);
+  setSsbState(c.gasUrl?'idle':'none');
+}
+
+/* Exception dates */
+function renderExcList(c){
+  const excList=document.getElementById('excList');
+  const all=[...(c.excludeDates||[]).map(d=>({d,t:'exclude'})),...(c.extraDates||[]).map(d=>({d,t:'extra'}))].sort((a,b)=>a.d.localeCompare(b.d));
+  if(!all.length){excList.innerHTML='<div style="font-size:.72rem;color:var(--dim);padding:6px">예외 날짜가 없습니다</div>';return;}
+  excList.innerHTML=all.map((item,i)=>`
+    <div class="exc-item">
+      <div class="exc-date">${item.d}</div>
+      <span class="exc-type-badge ${item.t}">${item.t==='exclude'?'제외':'추가'}</span>
+      <button class="btn-exc-rm" onclick="removeExc('${item.d}','${item.t}')">✕</button>
+    </div>`).join('');
+}
+
+function addExcDate(){
+  const dt=document.getElementById('excDate').value;
+  const tp=document.getElementById('excType').value;
+  if(!dt){toast('날짜를 선택하세요','warn');return;}
+  const c=lc();
+  if(!c.excludeDates) c.excludeDates=[];
+  if(!c.extraDates) c.extraDates=[];
+  if(tp==='exclude'){
+    if(!c.excludeDates.includes(dt)) c.excludeDates.push(dt);
+    c.extraDates=c.extraDates.filter(d=>d!==dt);
+  } else {
+    if(!c.extraDates.includes(dt)) c.extraDates.push(dt);
+    c.excludeDates=c.excludeDates.filter(d=>d!==dt);
+  }
+  sc(c);renderExcList(c);
+}
+
+function removeExc(dt,tp){
+  const c=lc();
+  if(tp==='exclude') c.excludeDates=(c.excludeDates||[]).filter(d=>d!==dt);
+  else c.extraDates=(c.extraDates||[]).filter(d=>d!==dt);
+  sc(c);renderExcList(c);
+}
+
+function saveCfg(){
+  const c=lc();
+  c.gasUrl=document.getElementById('cfgGas').value.trim();
+  c.programName=document.getElementById('cfgProg').value.trim()||'MISSION';
+  c.missionName=document.getElementById('cfgMis').value.trim()||'운동장 3바퀴 완주';
+  c.lapsRequired=parseInt(document.getElementById('cfgLaps').value)||3;
+  c.achieveThreshold=parseInt(document.getElementById('cfgThresh').value)||100;
+  const wd=[];for(let i=0;i<7;i++){const el=document.getElementById('dw'+i);if(el&&el.checked)wd.push(i);}
+  c.missionWeekdays=wd;
+  // Monthly targets
+  if(!c.monthlyTargets) c.monthlyTargets={};
+  const now=new Date();
+  for(let yr=now.getFullYear()-1;yr<=now.getFullYear()+1;yr++){
+    for(let mo=1;mo<=12;mo++){
+      const key=`${yr}-${pad(mo)}`;
+      const inp=document.getElementById('mt_'+key);
+      if(inp){const v=inp.value.trim();if(v)c.monthlyTargets[key]=parseInt(v);else delete c.monthlyTargets[key];}
+    }
+  }
+  sc(c);
+  document.getElementById('ahTitle').textContent=c.programName;
+  document.getElementById('ahSub').textContent=c.missionName;
+  setSsbState(c.gasUrl?'idle':'none');
+  buildProxyCls();buildProxyLap();
+  toast('✅ 설정 저장 완료 — 동기화 버튼을 눌러 학생 앱에 반영하세요');
+}
+
+/* Classes */
+function renderClsChips(c){
+  document.getElementById('clsChips').innerHTML=(c.classes||[]).map((cl,i)=>
+    `<div class="chip">${cl}<button class="crm" onclick="rmCls(${i})">✕</button></div>`).join('');
+}
+function addCls(){
+  const name=document.getElementById('newCls').value.trim(); if(!name)return;
+  const c=lc(); if(c.classes.includes(name)){toast('이미 있는 학반','warn');return;}
+  c.classes.push(name);sc(c);document.getElementById('newCls').value='';renderClsChips(c);populateRCls(c.classes);
+}
+function rmCls(i){
+  const c=lc();if(!confirm(`"${c.classes[i]}" 삭제?`))return;
+  c.classes.splice(i,1);sc(c);renderClsChips(c);populateRCls(c.classes);
+}
+
+/* Roster */
+function populateRCls(classes){
+  const opts=classes.map(cl=>`<option value="${cl}">${cl}</option>`).join('');
+  document.getElementById('rCls').innerHTML=opts||'<option value="">학반 없음</option>';
+  document.getElementById('rBulkCls').innerHTML=opts||'<option value="">학반 없음</option>';
+}
+function renderRosterUi(c){
+  const byClass={};(c.classes||[]).forEach(cl=>{byClass[cl]=[];});
+  (c.roster||[]).forEach(s=>{if(!byClass[s.className])byClass[s.className]=[];byClass[s.className].push(s.name);});
+  let html='';
+  Object.entries(byClass).forEach(([cl,names])=>{
+    if(!names.length)return;
+    html+=`<div style="font-size:.67rem;font-weight:700;color:var(--accent);margin:7px 0 4px">${cl}</div><div style="display:flex;flex-wrap:wrap;gap:5px">`;
+    names.forEach(n=>{
+      const idx=(c.roster||[]).findIndex(s=>s.name===n&&s.className===cl);
+      html+=`<div class="chip">${n}<button class="crm" onclick="rmRoster(${idx})">✕</button></div>`;
+    });
+    html+='</div>';
+  });
+  document.getElementById('rosterUi').innerHTML=html||'<div style="font-size:.74rem;color:var(--dim);padding:6px">명단이 비어 있습니다</div>';
+}
+function addRoster(){
+  const cls=document.getElementById('rCls').value,name=document.getElementById('rName').value.trim();
+  if(!cls||!name)return;
+  const c=lc();if((c.roster||[]).find(s=>s.name===name&&s.className===cls)){toast('이미 있는 학생','warn');return;}
+  if(!c.roster)c.roster=[];c.roster.push({name,className:cls});sc(c);
+  document.getElementById('rName').value='';renderRosterUi(c);
+}
+function bulkRoster(){
+  const cls=document.getElementById('rBulkCls').value,text=document.getElementById('rBulk').value;
+  const names=text.split('\n').map(n=>n.trim()).filter(Boolean);if(!cls||!names.length)return;
+  const c=lc();if(!c.roster)c.roster=[];
+  let added=0;
+  names.forEach(name=>{if(!(c.roster||[]).find(s=>s.name===name&&s.className===cls)){c.roster.push({name,className:cls});added++;}});
+  sc(c);document.getElementById('rBulk').value='';renderRosterUi(c);toast(`✅ ${added}명이 [${cls}]에 추가되었습니다`);
+}
+function rmRoster(i){const c=lc();c.roster.splice(i,1);sc(c);renderRosterUi(c);}
+
+/* ── helpers ── */
+function buildFilter(id,classes,cur,cb){
+  const all=['전체',...(classes||[])];
+  document.getElementById(id).innerHTML=all.map((cl,i)=>{
+    const v=i===0?'__all__':cl;
+    return `<button class="cf-chip ${cur===v?'active':''}" onclick="void(0)">${cl}</button>`;
+  }).join('');
+  document.querySelectorAll(`#${id} .cf-chip`).forEach((btn,i)=>{
+    btn.addEventListener('click',()=>{
+      const v=i===0?'__all__':all[i]; cb(v);
+      buildFilter(id,classes,v,cb);
+    });
+  });
+}
+function getGasScript(){ return document.getElementById('gasStore').value; }
+function copyGas(){ navigator.clipboard.writeText(getGasScript()).then(()=>toast('✅ 스크립트 복사 완료')); }
+
+/* ── QR CODE GENERATION ── */
+let qrInstance = null;
+
+async function showQR() {
+  const c = lc();
+  const url = document.getElementById('cfgGas').value.trim() || c.gasUrl;
+  if (!url) { toast('⚠️ GAS URL을 먼저 입력하세요', 'warn'); return; }
+
+  // Load qrcode.js if needed
+  if (typeof QRCode === 'undefined') {
+    await loadScriptT('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js');
+  }
+
+  // Show modal
+  document.getElementById('qrModalOv').classList.add('on');
+  document.getElementById('qrUrlDisplay').textContent = url;
+
+  // Generate QR
+  const box = document.getElementById('qrCodeBox');
+  box.innerHTML = '';
+  qrInstance = new QRCode(box, {
+    text: url,
+    width: 200, height: 200,
+    colorDark: '#000000', colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+}
+
+function closeQRModal() {
+  document.getElementById('qrModalOv').classList.remove('on');
+}
+
+function downloadQR() {
+  const box = document.getElementById('qrCodeBox');
+  const img = box.querySelector('img') || box.querySelector('canvas');
+  if (!img) return;
+  let dataUrl;
+  if (img.tagName === 'CANVAS') {
+    dataUrl = img.toDataURL('image/png');
+  } else {
+    // img element — draw to canvas first
+    const canvas = document.createElement('canvas');
+    canvas.width = 200; canvas.height = 200;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    dataUrl = canvas.toDataURL('image/png');
+  }
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = '미션체크_연결QR.png';
+  a.click();
+  toast('✅ QR 코드 이미지가 저장되었습니다');
+}
+
+function loadScriptT(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = src;
+    s.onload = res; s.onerror = rej; document.head.appendChild(s);
+  });
+}
+
+document.getElementById('qrModalOv').addEventListener('click', e => {
+  if (e.target === document.getElementById('qrModalOv')) closeQRModal();
 });
 
-setInterval(()=>{ if(document.getElementById('screen-main').style.display==='flex') document.getElementById('dateLabel').textContent=todayLabel(); },60000);
-
-
-/* ══════════════════════════════════════════
-   QR SCANNER
-══════════════════════════════════════════ */
-/* ══════════════════════════════════════════
-   QR SCANNER — 완전 재작성
-   핵심 수정:
-   1. jsQR 로드 완료 후에만 카메라 시작
-   2. 250ms 스로틀로 안정적 스캔
-   3. URL 필터 제거 (모든 https URL 허용)
-   4. 상세 에러 메시지
-   5. 수동 확인 폴백
-══════════════════════════════════════════ */
-let qrStream = null, qrTimer = null, qrActive = false;
-const JSQR_SRC = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
-const SCAN_INTERVAL_MS = 250; // 250ms마다 스캔
-
-function setQrStatus(msg, isErr) {
-  const el = document.getElementById('qrErr');
-  el.textContent = msg;
-  el.style.display = msg ? 'block' : 'none';
-  el.style.color = isErr ? 'var(--danger)' : 'var(--accent2)';
+let toastT;
+function toast(msg,type){
+  clearTimeout(toastT);const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast'+(type==='warn'?' warn':'')+' show';
+  toastT=setTimeout(()=>t.classList.remove('show'),2800);
 }
 
-async function openQR() {
-  // 오버레이 표시
-  document.getElementById('qrOverlay').classList.add('on');
-  document.getElementById('qrScanUI').style.display = 'flex';
-  document.getElementById('qrSuccessUI').style.display = 'none';
-  setQrStatus('');
-  qrActive = true;
-
-  // ① jsQR 라이브러리 먼저 로드 (완료 보장)
-  if (typeof jsQR !== 'function') {
-    setQrStatus('📡 스캔 엔진 로드 중…', false);
-    try {
-      await loadScriptOnce(JSQR_SRC);
-    } catch(e) {
-      setQrStatus('❌ 스캔 엔진 로드 실패. 인터넷 연결을 확인하세요.', true);
-      return;
-    }
-  }
-  setQrStatus('');
-
-  // ② 카메라 권한 요청
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    setQrStatus('❌ 이 브라우저는 카메라를 지원하지 않습니다.\n(Chrome 또는 Safari를 사용하세요)', true);
-    return;
-  }
-
-  try {
-    // 후면 카메라 우선, 없으면 전면 카메라
-    try {
-      qrStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { exact: 'environment' } }
-      });
-    } catch(_) {
-      qrStream = await navigator.mediaDevices.getUserMedia({ video: true });
-    }
-  } catch(e) {
-    let msg = '❌ 카메라를 사용할 수 없습니다.';
-    if (e.name === 'NotAllowedError')  msg = '❌ 카메라 접근이 거부되었습니다.\n브라우저 주소창 옆 🔒 아이콘에서 카메라를 허용해주세요.';
-    if (e.name === 'NotFoundError')    msg = '❌ 카메라를 찾을 수 없습니다.';
-    if (e.name === 'NotReadableError') msg = '❌ 카메라가 다른 앱에서 사용 중입니다.';
-    setQrStatus(msg, true);
-    return;
-  }
-
-  // ③ 비디오 연결
-  const video = document.getElementById('qrVideo');
-  video.srcObject = qrStream;
-  video.setAttribute('playsinline', '');
-  video.setAttribute('muted', '');
-
-  try { await video.play(); } catch(e) { /* iOS 일부에서 play() 거부 — 무시 */ }
-
-  // ④ 스캔 루프 시작 (타이머 기반, 250ms)
-  qrTimer = setInterval(() => {
-    if (!qrActive || !qrStream) { clearInterval(qrTimer); return; }
-    tryScan(video);
-  }, SCAN_INTERVAL_MS);
-}
-
-function tryScan(video) {
-  // 비디오가 아직 준비 안 됨
-  if (video.readyState < 2) return;
-  const w = video.videoWidth, h = video.videoHeight;
-  if (!w || !h) return;
-
-  const canvas = document.getElementById('qrCanvas');
-  canvas.width = w; canvas.height = h;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  ctx.drawImage(video, 0, 0, w, h);
-
-  let imgData;
-  try { imgData = ctx.getImageData(0, 0, w, h); } catch(e) { return; }
-
-  // jsQR 디코딩 (양방향 인버전으로 인식률 향상)
-  const code = jsQR(imgData.data, w, h, { inversionAttempts: 'attemptBoth' });
-  if (!code || !code.data) return;
-
-  const raw = code.data.trim();
-  if (!raw) return;
-
-  // ⑤ URL 검증 — https:// 이면 모두 허용 (GAS URL 형식 강제 제거)
-  if (raw.startsWith('https://') || raw.startsWith('http://')) {
-    qrFound(raw);
-  } else {
-    // QR 인식은 됐지만 URL 형식 아님 → 상태 표시
-    setQrStatus('⚠️ QR 인식됨 (URL 아님): ' + raw.substring(0, 40), false);
-  }
-}
-
-function qrFound(url) {
-  // 스캔 중지
-  qrActive = false;
-  clearInterval(qrTimer); qrTimer = null;
-  if (qrStream) { qrStream.getTracks().forEach(t => t.stop()); qrStream = null; }
-
-  // 성공 화면
-  document.getElementById('qrScanUI').style.display = 'none';
-  document.getElementById('qrSuccessUI').style.display = 'flex';
-  document.getElementById('qrResultUrl').textContent =
-    url.length > 60 ? url.substring(0, 57) + '…' : url;
-
-  // 1.4초 후 자동 연결
-  setTimeout(() => {
-    document.getElementById('urlInput').value = url;
-    closeQR();
-    connectUrl();
-  }, 1400);
-}
-
-function closeQR() {
-  qrActive = false;
-  clearInterval(qrTimer); qrTimer = null;
-  if (qrStream) { qrStream.getTracks().forEach(t => t.stop()); qrStream = null; }
-  document.getElementById('qrOverlay').classList.remove('on');
-}
-
-function loadScriptOnce(src) {
-  return new Promise((res, rej) => {
-    if (document.querySelector(`script[src="${src}"]`)) { res(); return; }
-    const s = document.createElement('script');
-    s.src = src; s.crossOrigin = 'anonymous';
-    s.onload = res;
-    s.onerror = () => rej(new Error('Script load failed: ' + src));
-    document.head.appendChild(s);
-  });
-}
-
-/* ══ BOOT ══ */
-boot();
+/* ══ INIT ══ */
+document.getElementById('gasCode').textContent=getGasScript();
+initPin();
 </script>
 </body>
 </html>
