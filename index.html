@@ -123,6 +123,60 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .stu-btns{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:7px}
 .stu-b{background:var(--card2);border:2px solid var(--border);border-radius:var(--Rs);padding:9px 6px;text-align:center;font-family:'Noto Sans KR',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s}
 .stu-b.on{background:rgba(78,168,222,.2);border-color:var(--accent);color:var(--accent)}.stu-b:active{transform:scale(.92)}
+.multi-sel-bar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:10px;min-height:24px}
+.btn-sel-ctrl{background:none;border:1px solid var(--border);color:var(--dim);border-radius:20px;padding:4px 11px;font-family:'Noto Sans KR',sans-serif;font-size:.7rem;cursor:pointer;transition:all .2s}
+.btn-sel-ctrl:hover{border-color:var(--accent);color:var(--accent)}
+.multi-count{font-size:.72rem;color:var(--accent);font-weight:700}
+
+/* ── 학생 개인 기록 패널 ── */
+.sdp-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);z-index:800;align-items:flex-end;justify-content:center}
+.sdp-ov.on{display:flex}
+.sdp-panel{background:var(--surface);border-radius:22px 22px 0 0;width:100%;max-width:620px;max-height:91vh;overflow-y:auto;padding:20px 17px 40px;animation:slideUp .3s cubic-bezier(.34,1.56,.64,1)}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sdp-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px}
+.sdp-name{font-size:1.05rem;font-weight:700;line-height:1.2}
+.sdp-cls{font-size:.68rem;color:var(--dim);margin-top:3px}
+.sdp-close{background:var(--card);border:1px solid var(--border);color:var(--dim);border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.95rem;flex-shrink:0;transition:all .2s}
+.sdp-close:hover{border-color:var(--accent);color:var(--text)}
+.sdp-mnav{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:13px}
+.sdp-mnav button{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.85rem}
+.sdp-mnav button:hover{border-color:var(--accent)}
+.sdp-mlbl{font-size:.88rem;font-weight:700;min-width:100px;text-align:center}
+.sdp-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:13px}
+.sdp-sc{background:var(--card);border:1px solid var(--border);border-radius:var(--Rs);padding:10px 7px;text-align:center}
+.sdp-sc .v{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;line-height:1}
+.sdp-sc .l{font-size:.6rem;color:var(--dim);margin-top:2px}
+.sdp-cal-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--Rs);padding:13px;margin-bottom:11px}
+.sdp-dow{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:4px}
+.sdp-dow span{text-align:center;font-size:.63rem;font-weight:700;color:var(--dim);padding:3px 0}
+.sdp-dow span:first-child{color:#ff8a80}.sdp-dow span:last-child{color:#82aaff}
+.sdp-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.sdp-cell{aspect-ratio:1;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.76rem;font-weight:600;background:rgba(255,255,255,.03);cursor:pointer;transition:all .15s;position:relative}
+.sdp-cell.empty{background:transparent;cursor:default;pointer-events:none}
+.sdp-cell.future{opacity:.2;pointer-events:none}
+.sdp-cell.nm{opacity:.15;background:transparent}
+.sdp-cell.tod{border:2px solid var(--accent)}
+.sdp-cell.c3{background:rgba(6,214,160,.2);color:var(--ok)}
+.sdp-cell.c1,.sdp-cell.c2{background:rgba(255,209,102,.15);color:var(--a2)}
+.sdp-cell:not(.empty):not(.future):hover{border:1px solid rgba(78,168,222,.45);background:rgba(78,168,222,.07)}
+.sdp-cell.editing{border:2px solid var(--accent)!important;background:rgba(78,168,222,.15)!important}
+.sdp-cell .csub{font-size:.47rem;margin-top:1px;opacity:.8}
+
+/* 날짜 편집 행 */
+.edit-row{background:rgba(78,168,222,.07);border:1px solid rgba(78,168,222,.2);border-radius:var(--Rs);padding:11px 13px;margin-bottom:9px;display:none;align-items:center;gap:9px;flex-wrap:wrap}
+.edit-row.on{display:flex}
+.edit-lbl{font-size:.76rem;font-weight:700;flex-shrink:0;min-width:75px}
+.edit-lap-btns{display:flex;gap:5px;flex:1;flex-wrap:wrap}
+.elb{padding:6px 13px;border-radius:20px;background:var(--card);border:2px solid var(--border);color:var(--dim);font-family:'Noto Sans KR',sans-serif;font-size:.77rem;font-weight:600;cursor:pointer;transition:all .2s}
+.elb:hover{border-color:rgba(78,168,222,.4)}
+.elb.sel0{background:rgba(239,71,111,.15);border-color:var(--err);color:var(--err)}
+.elb.sel1{background:rgba(255,107,53,.2);border-color:var(--org);color:var(--org)}
+.elb.sel2{background:rgba(255,209,102,.2);border-color:var(--a2);color:var(--a2)}
+.elb.sel3{background:rgba(6,214,160,.2);border-color:var(--ok);color:var(--ok)}
+.btn-esave{background:linear-gradient(135deg,var(--ok),#04b888);color:#fff;border:none;border-radius:var(--Rs);padding:8px 15px;font-family:'Noto Sans KR',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;flex-shrink:0;transition:all .2s}
+.btn-esave:disabled{background:var(--card2);color:var(--dim);cursor:not-allowed}
+.edit-hint{font-size:.67rem;color:var(--dim);text-align:center;margin-bottom:6px}
+
 .d-inp{background:var(--card2);border:1px solid var(--border);border-radius:var(--Rs);padding:10px 13px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:.87rem;width:100%;outline:none;transition:border-color .2s}
 .d-inp:focus{border-color:var(--accent)}
 input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.6)}
@@ -290,6 +344,7 @@ input[type=date].exc-inp::-webkit-calendar-picker-indicator{filter:invert(.6)}
     </div>
     <div class="stat-row" id="todayStats"></div>
     <div class="cls-filter" id="todayCls"></div>
+    <div style="font-size:.68rem;color:var(--dim);margin-bottom:8px">👆 학생 행을 클릭하면 개인 기록을 확인·수정할 수 있습니다</div>
     <div class="stu-table" id="stuTable"><div class="loading-r">데이터를 불러오세요</div></div>
   </div>
 
@@ -309,7 +364,15 @@ input[type=date].exc-inp::-webkit-calendar-picker-indicator{filter:invert(.6)}
   <div class="view" id="view-proxy">
     <div class="prx-step"><div class="ps-t"><span class="ps-num">1</span> 날짜 선택</div><input type="date" class="d-inp" id="prxDate"></div>
     <div class="prx-step"><div class="ps-t"><span class="ps-num">2</span> 학반 선택</div><div class="sel-btns" id="prxCls"></div></div>
-    <div class="prx-step"><div class="ps-t"><span class="ps-num">3</span> 학생 선택</div><div class="stu-btns" id="prxStu"><div style="font-size:.77rem;color:var(--dim)">먼저 학반을 선택하세요</div></div></div>
+    <div class="prx-step">
+      <div class="ps-t"><span class="ps-num">3</span> 학생 선택 <span style="font-size:.67rem;font-weight:400;color:var(--accent)">다중 선택 가능</span></div>
+      <div class="multi-sel-bar" id="multiSelBar" style="display:none">
+        <button class="btn-sel-ctrl" onclick="prxSelAll()">전체 선택</button>
+        <button class="btn-sel-ctrl" onclick="prxSelNone()">선택 해제</button>
+        <span class="multi-count" id="multiCount"></span>
+      </div>
+      <div class="stu-btns" id="prxStu"><div style="font-size:.77rem;color:var(--dim)">먼저 학반을 선택하세요</div></div>
+    </div>
     <div class="prx-step"><div class="ps-t"><span class="ps-num">4</span> 바퀴 수</div><div class="lap-sel" id="prxLap"></div></div>
     <div class="prx-confirm" id="prxConfirm"><div class="prx-c-lbl">대리 제출 내용 확인</div><div class="prx-c-val" id="prxVal">—</div></div>
     <button class="btn-prx" id="btnPrx" onclick="doProxy()">✅ 대리 제출하기</button>
@@ -459,7 +522,37 @@ input[type=date].exc-inp::-webkit-calendar-picker-indicator{filter:invert(.6)}
     <button class="btn-save-cfg" onclick="saveCfg()">💾 설정 저장</button>
   </div>
 
-  </div><!-- /viewWrap -->
+  
+<!-- ═══ 학생 개인 기록 패널 ═══ -->
+<div class="sdp-ov" id="sdpOv">
+  <div class="sdp-panel">
+    <div class="panel-handle"></div>
+    <div class="sdp-head">
+      <div>
+        <div class="sdp-name" id="sdpName">이름</div>
+        <div class="sdp-cls" id="sdpCls">학반</div>
+      </div>
+      <button class="sdp-close" onclick="closeSdp()">✕</button>
+    </div>
+    <div class="sdp-mnav">
+      <button onclick="sdpChangeMonth(-1)">◀</button>
+      <div class="sdp-mlbl" id="sdpMlbl">2026년 5월</div>
+      <button onclick="sdpChangeMonth(1)">▶</button>
+    </div>
+    <div class="sdp-stats" id="sdpStats"></div>
+    <div class="sdp-cal-wrap">
+      <div class="sdp-dow"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+      <div class="sdp-cal" id="sdpCal"></div>
+    </div>
+    <div class="edit-hint">날짜를 클릭하면 기록을 수정할 수 있습니다</div>
+    <div class="edit-row" id="editRow">
+      <div class="edit-lbl" id="editLbl">날짜</div>
+      <div class="edit-lap-btns" id="editBtns"></div>
+      <button class="btn-esave" id="btnESave" onclick="saveEditDay()">저장</button>
+    </div>
+  </div>
+</div>
+</div><!-- /viewWrap -->
 </div><!-- /scMain -->
 
 <div class="toast" id="toast"></div>
@@ -1042,7 +1135,7 @@ function renderTodayTable(){
       const sc3=laps>=req?'done':laps>0?'part':'none';
       const st=laps>=req?'완료 ✓':laps>0?`${laps}/${req}`:'미제출';
       const tm=r?.submittedAt?`<div style="font-size:.6rem;color:var(--dim)">${r.submittedAt}${r.isProxy?' (대리)':''}</div>`:'';
-      html+=`<div class="st-row"><div><div class="sn">${s.name}</div><div class="sc2">${s.className}${tm}</div></div><div class="laps-pip">${dots}</div><div class="sst ${sc3}">${st}</div></div>`;
+      html+=`<div class="st-row" style="cursor:pointer" onclick="openSdp('${s.name.replace(/'/g,"&#39;")}','${g.replace(/'/g,"&#39;")}')"><div><div class="sn">${s.name}</div><div class="sc2">${s.className}${tm}</div></div><div class="laps-pip">${dots}</div><div class="sst ${sc3}">${st}</div></div>`;
     });
   });
   document.getElementById('stuTable').innerHTML=html;
@@ -1121,56 +1214,273 @@ function renderMonthly(){
 /* ══════════════════════════════════════════════
    PROXY
 ══════════════════════════════════════════════ */
-let prx={cls:'',stu:'',laps:0};
+/* ══════════════════════════════════════════════
+   대리 제출 (다중 선택)
+══════════════════════════════════════════════ */
+let prx = { cls:'', stuList:[], laps:0 };  // stuList: 다중 선택된 학생 배열
 
 function buildProxyCls(){
-  const c=lc(),g=document.getElementById('prxCls');
-  if(!c.classes.length){g.innerHTML='<div style="font-size:.76rem;color:var(--dim)">설정에서 학반을 추가하세요</div>';return;}
-  g.innerHTML=c.classes.map(cl=>`<button class="sel-b ${prx.cls===cl?'on':''}" onclick="prxSelCls('${cl.replace(/'/g,"\\'")}')"> ${cl}</button>`).join('');
+  const c=lc(), g=document.getElementById('prxCls');
+  if(!c.classes.length){ g.innerHTML='<div style="font-size:.76rem;color:var(--dim)">설정에서 학반을 추가하세요</div>'; return; }
+  g.innerHTML=c.classes.map(cl=>
+    `<button class="sel-b ${prx.cls===cl?'on':''}" onclick="prxSelCls('${cl.replace(/'/g,"\'")}')"> ${cl}</button>`
+  ).join('');
 }
-function prxSelCls(cls){prx.cls=cls;prx.stu='';buildProxyCls();buildProxyStu();updPrxConfirm();}
+
+function prxSelCls(cls){
+  prx.cls=cls; prx.stuList=[];
+  buildProxyCls(); buildProxyStu(); updPrxConfirm();
+}
+
 function buildProxyStu(){
-  const c=lc(),g=document.getElementById('prxStu');
-  if(!prx.cls){g.innerHTML='<div style="font-size:.76rem;color:var(--dim)">먼저 학반을 선택하세요</div>';return;}
+  const c=lc(), g=document.getElementById('prxStu');
+  const bar=document.getElementById('multiSelBar');
+  if(!prx.cls){ g.innerHTML='<div style="font-size:.77rem;color:var(--dim)">먼저 학반을 선택하세요</div>'; bar.style.display='none'; return; }
   const members=c.roster.filter(s=>s.className===prx.cls);
-  if(!members.length){g.innerHTML='<div style="font-size:.76rem;color:var(--dim)">설정 → 학생 명단에 추가하세요</div>';return;}
-  g.innerHTML=members.map(s=>`<button class="stu-b ${prx.stu===s.name?'on':''}" onclick="prxSelStu('${s.name.replace(/'/g,"\\'")}')"> ${s.name}</button>`).join('');
+  if(!members.length){ g.innerHTML='<div style="font-size:.77rem;color:var(--dim)">설정 → 학생 명단에 추가하세요</div>'; bar.style.display='none'; return; }
+  bar.style.display='flex';
+  g.innerHTML=members.map(s=>{
+    const sel=prx.stuList.includes(s.name);
+    return `<button class="stu-b ${sel?'on':''}" onclick="prxToggleStu('${s.name.replace(/'/g,"\'")}')">
+      ${sel?'✓ ':''}${s.name}
+    </button>`;
+  }).join('');
+  const cnt=document.getElementById('multiCount');
+  cnt.textContent = prx.stuList.length > 0 ? `${prx.stuList.length}명 선택됨` : '';
 }
-function prxSelStu(n){prx.stu=n;buildProxyStu();updPrxConfirm();}
+
+function prxToggleStu(name){
+  const idx=prx.stuList.indexOf(name);
+  if(idx>=0) prx.stuList.splice(idx,1);
+  else prx.stuList.push(name);
+  buildProxyStu(); updPrxConfirm();
+}
+
+function prxSelAll(){
+  const c=lc();
+  prx.stuList=c.roster.filter(s=>s.className===prx.cls).map(s=>s.name);
+  buildProxyStu(); updPrxConfirm();
+}
+
+function prxSelNone(){
+  prx.stuList=[];
+  buildProxyStu(); updPrxConfirm();
+}
+
 function buildProxyLap(){
-  const c=lc(),req=c.lapsRequired||3;
-  const cols=['org','a2','ok'];
+  const c=lc(), req=c.lapsRequired||3;
   document.getElementById('prxLap').innerHTML=Array.from({length:req},(_,i)=>{
-    const n=i+1,selCls=prx.laps===n?`sel${Math.min(n,3)}`:'';
+    const n=i+1, selCls=prx.laps===n?`sel${Math.min(n,3)}`:'';
     return `<div class="ls-b ${selCls}" onclick="prxSelLap(${n})">${n}<span>${n}바퀴</span></div>`;
   }).join('');
 }
-function prxSelLap(n){prx.laps=n;buildProxyLap();updPrxConfirm();}
+
+function prxSelLap(n){ prx.laps=n; buildProxyLap(); updPrxConfirm(); }
+
 function updPrxConfirm(){
-  const ok=prx.cls&&prx.stu&&prx.laps;
+  const ok=prx.cls && prx.stuList.length>0 && prx.laps>0;
   document.getElementById('prxConfirm').style.display=ok?'block':'none';
   document.getElementById('btnPrx').style.display=ok?'block':'none';
   if(ok){
-    const c=lc(),dt=document.getElementById('prxDate').value||getToday();
-    document.getElementById('prxVal').textContent=`${prx.cls} · ${prx.stu} · ${dt} · ${prx.laps}/${c.lapsRequired||3}바퀴`;
+    const c=lc(), dt=document.getElementById('prxDate').value||getToday();
+    const names = prx.stuList.length<=3
+      ? prx.stuList.join(', ')
+      : prx.stuList.slice(0,2).join(', ') + ' 외 ' + (prx.stuList.length-2) + '명';
+    document.getElementById('prxVal').textContent =
+      `[${prx.cls}] ${names} · ${dt} · ${prx.laps}/${c.lapsRequired||3}바퀴`;
+    document.getElementById('btnPrx').textContent =
+      `✅ ${prx.stuList.length}명 대리 제출하기`;
   }
 }
+
 async function doProxy(){
   const c=lc();
-  if(!prx.cls||!prx.stu||!prx.laps)return;
-  if(!c.gasUrl){toast('⚠️ GAS URL을 설정하세요','warn');return;}
+  if(!prx.cls || prx.stuList.length===0 || !prx.laps) return;
+  if(!c.gasUrl){ toast('⚠️ GAS URL을 설정하세요','warn'); return; }
   const dt=document.getElementById('prxDate').value||getToday();
-  if(!confirm(`[${prx.cls}] ${prx.stu}의 ${dt} 기록을 ${prx.laps}바퀴로 제출하시겠습니까?`))return;
+  const names = prx.stuList.length<=3
+    ? prx.stuList.join(', ')
+    : prx.stuList.slice(0,2).join(', ') + ' 외 ' + (prx.stuList.length-2) + '명';
+  if(!confirm(`[${prx.cls}] ${names}의 ${dt} 기록을 ${prx.laps}바퀴로 제출하시겠습니까?`)) return;
+
   const btn=document.getElementById('btnPrx');
-  btn.disabled=true;btn.textContent='제출 중…';
-  try{
-    await fetch(c.gasUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({date:dt,name:prx.stu,className:prx.cls,laps:prx.laps,lapsRequired:c.lapsRequired||3,submittedAt:nowTime(),isProxy:true})});
-    toast(`✅ ${prx.stu} 대리 제출 완료!`);
-    prx={cls:'',stu:'',laps:0};buildProxyCls();buildProxyStu();buildProxyLap();updPrxConfirm();
-  }catch(e){toast('❌ 제출 실패','warn');}
-  finally{btn.disabled=false;btn.textContent='✅ 대리 제출하기';}
+  btn.disabled=true; btn.textContent=`0/${prx.stuList.length}명 제출 중…`;
+
+  let done=0, fail=0;
+  for(const name of prx.stuList){
+    try{
+      await fetch(c.gasUrl,{method:'POST',mode:'no-cors',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({date:dt,name,className:prx.cls,
+          laps:prx.laps,lapsRequired:c.lapsRequired||3,
+          submittedAt:nowTime(),isProxy:true})});
+      done++;
+    } catch { fail++; }
+    btn.textContent=`${done}/${prx.stuList.length}명 제출 중…`;
+    await new Promise(r=>setTimeout(r,80)); // GAS 과부하 방지
+  }
+
+  if(fail===0) toast(`✅ ${done}명 대리 제출 완료!`);
+  else toast(`⚠️ ${done}명 성공 / ${fail}명 실패`, 'warn');
+
+  // 초기화
+  prx={cls:'',stuList:[],laps:0};
+  buildProxyCls(); buildProxyStu(); buildProxyLap(); updPrxConfirm();
+  btn.disabled=false; btn.textContent='✅ 대리 제출하기';
 }
+
+
+/* ══════════════════════════════════════════════
+   학생 개인 기록 패널 (SDP)
+══════════════════════════════════════════════ */
+let sdp = { name:'', cls:'', y:new Date().getFullYear(), m:new Date().getMonth()+1, editDate:null, editLaps:null };
+
+function openSdp(name, cls){
+  sdp.name=name; sdp.cls=cls;
+  sdp.y=new Date().getFullYear(); sdp.m=new Date().getMonth()+1;
+  sdp.editDate=null; sdp.editLaps=null;
+  document.getElementById('sdpName').textContent=name;
+  document.getElementById('sdpCls').textContent=cls;
+  document.getElementById('sdpOv').classList.add('on');
+  renderSdp();
+}
+
+function closeSdp(){
+  document.getElementById('sdpOv').classList.remove('on');
+  document.getElementById('editRow').classList.remove('on');
+}
+
+function sdpChangeMonth(dir){
+  sdp.m+=dir;
+  if(sdp.m>12){sdp.m=1;sdp.y++;} if(sdp.m<1){sdp.m=12;sdp.y--;}
+  sdp.editDate=null; sdp.editLaps=null;
+  document.getElementById('editRow').classList.remove('on');
+  renderSdp();
+}
+
+function renderSdp(){
+  const c=lc(), req=c.lapsRequired||3;
+  const {y,m,name} = sdp;
+  const prefix=`${y}-${pad(m)}`;
+  const td=getToday();
+  const days=new Date(y,m,0).getDate();
+  const target=getTarget(c,y,m);
+
+  document.getElementById('sdpMlbl').textContent=`${y}년 ${m}월`;
+
+  // Stats from todayData (current day) + need all-month data from todayData
+  // We use what we have in todayData for today, but for month we show overall
+  let comp=0, totalLaps=0;
+  for(let i=1;i<=days;i++){
+    const dt=`${prefix}-${pad(i)}`; if(dt>td) break;
+    // Try to find from loaded today data (for today only) or from mData
+    // Best effort from mData
+    const mEntry = mData.find(r=>r.name===name&&r.className===sdp.cls);
+    if(dt===td){
+      const todayEntry=todayData.find(r=>r.name===name&&r.className===sdp.cls);
+      if(todayEntry){ totalLaps+=todayEntry.laps||0; if((todayEntry.laps||0)>=req)comp++; }
+    }
+  }
+  // Use mData if available for month totals
+  const mEntry=mData.find(r=>r.name===name&&r.className===sdp.cls);
+  if(mEntry){ comp=mEntry.completeDays; totalLaps=mEntry.totalLaps; }
+  const pct=target>0?Math.min(100,Math.round(comp/target*100)):0;
+
+  document.getElementById('sdpStats').innerHTML=`
+    <div class="sdp-sc"><div class="v" style="color:var(--ok)">${comp}</div><div class="l">완료일</div></div>
+    <div class="sdp-sc"><div class="v" style="color:var(--a2)">${target}</div><div class="l">이달 목표</div></div>
+    <div class="sdp-sc"><div class="v" style="color:var(--accent)">${pct}<span style="font-size:.7rem">%</span></div><div class="l">달성률</div></div>`;
+
+  // Calendar — NOTE: we only have confirmed data from mData/todayData
+  // For individual day editing, we rely on what GAS returns
+  const fdow=new Date(y,m-1,1).getDay();
+  let cal='';
+  for(let i=0;i<fdow;i++) cal+='<div class="sdp-cell empty"></div>';
+  for(let i=1;i<=days;i++){
+    const dt=`${prefix}-${pad(i)}`;
+    const fut=dt>td, ist=dt===td;
+    const isMission=isMD(c,dt);
+    // Laps: today from todayData, others unknown until fetch
+    let laps=-1;
+    if(dt===td){
+      const te=todayData.find(r=>r.name===name&&r.className===sdp.cls);
+      if(te) laps=te.laps||0;
+    }
+    let cls2='sdp-cell';
+    if(laps>=req) cls2+=' c3';
+    else if(laps>0) cls2+=' c'+laps;
+    if(fut) cls2+=' future';
+    if(!isMission&&!fut) cls2+=' nm';
+    if(ist) cls2+=' tod';
+    if(sdp.editDate===dt) cls2+=' editing';
+    const lbl=laps>=req?'✓':laps>0?laps:i;
+    const sub=laps>0&&laps<req?`<div class="csub">${laps}바퀴</div>`:'';
+    cal+=`<div class="${cls2}" onclick="sdpClickDay('${dt}',${laps})">${lbl}${sub}</div>`;
+  }
+  document.getElementById('sdpCal').innerHTML=cal;
+}
+
+function sdpClickDay(dt, currentLaps){
+  const c=lc(), req=c.lapsRequired||3;
+  sdp.editDate=dt; sdp.editLaps=currentLaps<0?0:currentLaps;
+
+  document.getElementById('editLbl').textContent=dt;
+  document.getElementById('editRow').classList.add('on');
+
+  // Build lap buttons: 0 ~ req
+  let btns='<button class="elb sel0" onclick="sdpSetLaps(0)">0바퀴<br><span style="font-size:.6rem">삭제</span></button>';
+  for(let n=1;n<=req;n++){
+    const selCls=sdp.editLaps===n?'sel'+Math.min(n,3):'';
+    btns+=`<button class="elb ${selCls}" onclick="sdpSetLaps(${n})">${n}바퀴${n>=req?'<br><span style="font-size:.6rem">완료</span>':''}</button>`;
+  }
+  // Mark current selection
+  document.getElementById('editBtns').innerHTML=btns;
+  sdpSetLaps(sdp.editLaps>=0?sdp.editLaps:0);
+
+  // Re-render calendar to show editing highlight
+  renderSdp();
+}
+
+function sdpSetLaps(n){
+  sdp.editLaps=n;
+  document.querySelectorAll('.elb').forEach((b,i)=>{
+    b.className='elb'; if(i===n) b.classList.add('sel'+Math.min(n,3));
+  });
+  document.getElementById('btnESave').disabled=false;
+}
+
+async function saveEditDay(){
+  const c=lc();
+  if(!sdp.editDate||sdp.editLaps===null) return;
+  if(!c.gasUrl){ toast('⚠️ GAS URL을 설정하세요','warn'); return; }
+  const btn=document.getElementById('btnESave');
+  btn.disabled=true; btn.textContent='저장 중…';
+  try{
+    await fetch(c.gasUrl,{method:'POST',mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        date:sdp.editDate, name:sdp.name, className:sdp.cls,
+        laps:sdp.editLaps, lapsRequired:c.lapsRequired||3,
+        submittedAt:nowTime(), isProxy:true, isUpdate:true
+      })});
+    toast(`✅ ${sdp.name} ${sdp.editDate} → ${sdp.editLaps}바퀴 수정 완료`);
+    // Update todayData in memory if this is today
+    if(sdp.editDate===getToday()){
+      const idx=todayData.findIndex(r=>r.name===sdp.name&&r.className===sdp.cls);
+      if(idx>=0) todayData[idx].laps=sdp.editLaps;
+      else if(sdp.editLaps>0) todayData.push({name:sdp.name,className:sdp.cls,laps:sdp.editLaps,submittedAt:nowTime(),isProxy:true});
+      renderTodayStats(); renderTodayTable();
+    }
+    sdp.editDate=null; sdp.editLaps=null;
+    document.getElementById('editRow').classList.remove('on');
+    renderSdp();
+  } catch(e){ toast('❌ 저장 실패','warn'); }
+  finally{ btn.disabled=false; btn.textContent='저장'; }
+}
+
+document.getElementById('sdpOv').addEventListener('click',e=>{
+  if(e.target===document.getElementById('sdpOv')) closeSdp();
+});
 
 /* ══════════════════════════════════════════════
    SETTINGS FORM
