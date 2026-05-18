@@ -766,6 +766,32 @@ function doGet(e) {
     }
 
     // [4] 연결 테스트 (?action=ping)
+    // 개인별 월간 기록 (?action=studentMonth&name=이름&className=학반&month=YYYY-MM)
+    if (action === 'studentMonth') {
+      var stuName  = p.name  || '';
+      var stuClass = p.className || '';
+      var smMonth  = p.month || '';
+      var dayMap   = {};
+      var smSheets = ss.getSheets();
+      for (var smi = 0; smi < smSheets.length; smi++) {
+        var smSh = smSheets[smi];
+        if (!isDataSheet(smSh.getName())) continue;
+        var smData = smSh.getDataRange().getValues();
+        for (var smd = 1; smd < smData.length; smd++) {
+          var smr = smData[smd];
+          var smDate = smr[0] instanceof Date
+            ? Utilities.formatDate(smr[0], 'Asia/Seoul', 'yyyy-MM-dd')
+            : String(smr[0]);
+          if (smMonth && smDate.indexOf(smMonth) !== 0) continue;
+          if (String(smr[1]) !== stuName) continue;
+          if (stuClass && String(smr[2]) !== stuClass) continue;
+          dayMap[smDate] = parseInt(smr[3]) || 0;
+        }
+      }
+      return respond({ success: true, data: dayMap, name: stuName, month: smMonth });
+    }
+
+    // 연결 테스트 (?action=ping)
     if (action === 'ping') {
       return respond({ success: true, message: 'pong', timestamp: new Date().toISOString() });
     }
@@ -1333,16 +1359,25 @@ async function doProxy(){
 /* ══════════════════════════════════════════════
    학생 개인 기록 패널 (SDP)
 ══════════════════════════════════════════════ */
-let sdp = { name:'', cls:'', y:new Date().getFullYear(), m:new Date().getMonth()+1, editDate:null, editLaps:null };
+// SDP 상태: name, cls, y, m, editDate, editLaps, dayCache(월별 캐시)
+let sdp = {
+  name:'', cls:'',
+  y: new Date().getFullYear(),
+  m: new Date().getMonth()+1,
+  editDate: null, editLaps: null,
+  dayCache: {}   // key: "YYYY-MM" → {date:laps,...}
+};
 
 function openSdp(name, cls){
   sdp.name=name; sdp.cls=cls;
   sdp.y=new Date().getFullYear(); sdp.m=new Date().getMonth()+1;
   sdp.editDate=null; sdp.editLaps=null;
+  sdp.dayCache={};
   document.getElementById('sdpName').textContent=name;
   document.getElementById('sdpCls').textContent=cls;
   document.getElementById('sdpOv').classList.add('on');
-  renderSdp();
+  document.getElementById('editRow').classList.remove('on');
+  loadSdpMonth();
 }
 
 function closeSdp(){
@@ -1355,67 +1390,100 @@ function sdpChangeMonth(dir){
   if(sdp.m>12){sdp.m=1;sdp.y++;} if(sdp.m<1){sdp.m=12;sdp.y--;}
   sdp.editDate=null; sdp.editLaps=null;
   document.getElementById('editRow').classList.remove('on');
-  renderSdp();
+  loadSdpMonth();
 }
 
-function renderSdp(){
-  const c=lc(), req=c.lapsRequired||3;
+// GAS에서 해당 월 데이터 불러오기
+async function loadSdpMonth(){
+  const cfg2=lc(), key=`${sdp.y}-${pad(sdp.m)}`;
+
+  // 로딩 상태 표시
+  document.getElementById('sdpCal').innerHTML=
+    '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--dim);font-size:.78rem"><div class="spn" style="margin:0 auto 8px"></div>기록 불러오는 중…</div>';
+  document.getElementById('sdpStats').innerHTML='';
+  document.getElementById('sdpMlbl').textContent=`${sdp.y}년 ${sdp.m}월`;
+
+  // 캐시 확인
+  if(sdp.dayCache[key]){
+    renderSdp(sdp.dayCache[key]);
+    return;
+  }
+
+  // GAS 호출
+  const url=cfg2.gasUrl;
+  if(!url){
+    // URL 없으면 todayData 기반으로만 표시
+    renderSdp({});
+    return;
+  }
+
+  try{
+    const json = await gasGet(url, {
+      action:'studentMonth',
+      name: sdp.name,
+      className: sdp.cls,
+      month: key
+    });
+    const dayMap = json.data || {};
+    sdp.dayCache[key] = dayMap;
+    renderSdp(dayMap);
+  } catch(e) {
+    toast('❌ 기록 불러오기 실패: '+e.message,'warn');
+    renderSdp({});
+  }
+}
+
+function renderSdp(dayMap){
+  const cfg2=lc(), req=cfg2.lapsRequired||3;
   const {y,m,name} = sdp;
   const prefix=`${y}-${pad(m)}`;
   const td=getToday();
   const days=new Date(y,m,0).getDate();
-  const target=getTarget(c,y,m);
+  const target=getTarget(cfg2,y,m);
 
-  document.getElementById('sdpMlbl').textContent=`${y}년 ${m}월`;
+  // 오늘 데이터는 todayData로 보정 (더 최신일 수 있음)
+  if(prefix===td.substring(0,7)){
+    const te=todayData.find(r=>r.name===name&&r.className===sdp.cls);
+    if(te) dayMap[td]=te.laps||0;
+  }
 
-  // Stats from todayData (current day) + need all-month data from todayData
-  // We use what we have in todayData for today, but for month we show overall
+  // 통계 계산
   let comp=0, totalLaps=0;
   for(let i=1;i<=days;i++){
     const dt=`${prefix}-${pad(i)}`; if(dt>td) break;
-    // Try to find from loaded today data (for today only) or from mData
-    // Best effort from mData
-    const mEntry = mData.find(r=>r.name===name&&r.className===sdp.cls);
-    if(dt===td){
-      const todayEntry=todayData.find(r=>r.name===name&&r.className===sdp.cls);
-      if(todayEntry){ totalLaps+=todayEntry.laps||0; if((todayEntry.laps||0)>=req)comp++; }
-    }
+    const laps=dayMap[dt]||0;
+    totalLaps+=laps;
+    if(laps>=req) comp++;
   }
-  // Use mData if available for month totals
-  const mEntry=mData.find(r=>r.name===name&&r.className===sdp.cls);
-  if(mEntry){ comp=mEntry.completeDays; totalLaps=mEntry.totalLaps; }
   const pct=target>0?Math.min(100,Math.round(comp/target*100)):0;
 
+  document.getElementById('sdpMlbl').textContent=`${y}년 ${m}월`;
   document.getElementById('sdpStats').innerHTML=`
     <div class="sdp-sc"><div class="v" style="color:var(--ok)">${comp}</div><div class="l">완료일</div></div>
     <div class="sdp-sc"><div class="v" style="color:var(--a2)">${target}</div><div class="l">이달 목표</div></div>
     <div class="sdp-sc"><div class="v" style="color:var(--accent)">${pct}<span style="font-size:.7rem">%</span></div><div class="l">달성률</div></div>`;
 
-  // Calendar — NOTE: we only have confirmed data from mData/todayData
-  // For individual day editing, we rely on what GAS returns
+  // 달력 렌더링
   const fdow=new Date(y,m-1,1).getDay();
   let cal='';
   for(let i=0;i<fdow;i++) cal+='<div class="sdp-cell empty"></div>';
   for(let i=1;i<=days;i++){
     const dt=`${prefix}-${pad(i)}`;
     const fut=dt>td, ist=dt===td;
-    const isMission=isMD(c,dt);
-    // Laps: today from todayData, others unknown until fetch
-    let laps=-1;
-    if(dt===td){
-      const te=todayData.find(r=>r.name===name&&r.className===sdp.cls);
-      if(te) laps=te.laps||0;
-    }
+    const isMission=isMD(cfg2,dt);
+    const laps=dayMap.hasOwnProperty(dt) ? dayMap[dt] : -1;  // -1: 기록 없음
+
     let cls2='sdp-cell';
-    if(laps>=req) cls2+=' c3';
-    else if(laps>0) cls2+=' c'+laps;
-    if(fut) cls2+=' future';
+    if(!fut && laps>=req)   cls2+=' c3';
+    else if(!fut && laps>0) cls2+=' c'+Math.min(laps,2);
+    if(fut)              cls2+=' future';
     if(!isMission&&!fut) cls2+=' nm';
-    if(ist) cls2+=' tod';
+    if(ist)              cls2+=' tod';
     if(sdp.editDate===dt) cls2+=' editing';
+
     const lbl=laps>=req?'✓':laps>0?laps:i;
     const sub=laps>0&&laps<req?`<div class="csub">${laps}바퀴</div>`:'';
-    cal+=`<div class="${cls2}" onclick="sdpClickDay('${dt}',${laps})">${lbl}${sub}</div>`;
+    cal+=`<div class="${cls2}" onclick="sdpClickDay('${dt}',${laps<0?0:laps})">${lbl}${sub}</div>`;
   }
   document.getElementById('sdpCal').innerHTML=cal;
 }
@@ -1450,30 +1518,38 @@ function sdpSetLaps(n){
 }
 
 async function saveEditDay(){
-  const c=lc();
+  const cfg2=lc();
   if(!sdp.editDate||sdp.editLaps===null) return;
-  if(!c.gasUrl){ toast('⚠️ GAS URL을 설정하세요','warn'); return; }
+  if(!cfg2.gasUrl){ toast('⚠️ GAS URL을 설정하세요','warn'); return; }
   const btn=document.getElementById('btnESave');
   btn.disabled=true; btn.textContent='저장 중…';
   try{
-    await fetch(c.gasUrl,{method:'POST',mode:'no-cors',
+    await fetch(cfg2.gasUrl,{method:'POST',mode:'no-cors',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         date:sdp.editDate, name:sdp.name, className:sdp.cls,
-        laps:sdp.editLaps, lapsRequired:c.lapsRequired||3,
+        laps:sdp.editLaps, lapsRequired:cfg2.lapsRequired||3,
         submittedAt:nowTime(), isProxy:true, isUpdate:true
       })});
     toast(`✅ ${sdp.name} ${sdp.editDate} → ${sdp.editLaps}바퀴 수정 완료`);
-    // Update todayData in memory if this is today
+
+    // 캐시 업데이트 (재요청 없이 즉시 반영)
+    const key=sdp.editDate.substring(0,7);
+    if(!sdp.dayCache[key]) sdp.dayCache[key]={};
+    sdp.dayCache[key][sdp.editDate]=sdp.editLaps;
+
+    // 오늘 수정이면 todayData도 갱신
     if(sdp.editDate===getToday()){
       const idx=todayData.findIndex(r=>r.name===sdp.name&&r.className===sdp.cls);
       if(idx>=0) todayData[idx].laps=sdp.editLaps;
       else if(sdp.editLaps>0) todayData.push({name:sdp.name,className:sdp.cls,laps:sdp.editLaps,submittedAt:nowTime(),isProxy:true});
       renderTodayStats(); renderTodayTable();
     }
+
     sdp.editDate=null; sdp.editLaps=null;
     document.getElementById('editRow').classList.remove('on');
-    renderSdp();
+    // 달력 즉시 재렌더링 (캐시된 값으로)
+    renderSdp(sdp.dayCache[key]);
   } catch(e){ toast('❌ 저장 실패','warn'); }
   finally{ btn.disabled=false; btn.textContent='저장'; }
 }
