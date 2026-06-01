@@ -440,8 +440,19 @@ input[type=date].exc-inp::-webkit-calendar-picker-indicator{filter:invert(.6)}
       <input class="fi" type="text" id="cfgProg" placeholder="예) MISSION" maxlength="20">
       <div class="fl">미션 설명</div>
       <input class="fi" type="text" id="cfgMis" placeholder="예) 운동장 3바퀴 완주" maxlength="30">
-      <div class="fl">완료 기준 바퀴 수</div>
-      <input class="fi" type="number" id="cfgLaps" min="1" max="10" placeholder="3" style="width:80px">
+      <div class="fl">1회 완료 기준 바퀴 수</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <input class="fi" type="number" id="cfgLaps" min="1" max="999" placeholder="3" style="width:80px;margin-bottom:0">
+        <span style="font-size:.76rem;color:var(--dim)">바퀴 이상이면 하루 미션 완료</span>
+      </div>
+      <div class="fl">월별 총 목표 바퀴 수 (선택)</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <input class="fi" type="number" id="cfgMonthlyLapGoal" min="0" max="9999" placeholder="예) 60" style="width:90px;margin-bottom:0">
+        <span style="font-size:.72rem;color:var(--dim)">바퀴 (0이면 미사용)</span>
+      </div>
+      <div style="font-size:.67rem;color:var(--dim);margin-bottom:12px;line-height:1.6">
+        예) 한 달에 총 60바퀴가 목표라면 60 입력. 학생 앱 순위표에 총 바퀴 기준 달성률이 표시됩니다.
+      </div>
       <div class="fl">미션 수행 요일</div>
       <div class="day-cks">
         <div class="dck"><input type="checkbox" id="dw0"><label for="dw0">일</label></div>
@@ -462,14 +473,32 @@ input[type=date].exc-inp::-webkit-calendar-picker-indicator{filter:invert(.6)}
         <span style="color:var(--err)">■</span> 제외: 선택한 날은 미션일에서 제외 (예: 공휴일)<br>
         <span style="color:var(--ok)">■</span> 추가: 선택한 날을 미션일로 추가 (예: 보충 미션일)
       </div>
-      <div class="exc-row">
-        <input type="date" class="exc-inp" id="excDate">
-        <select class="exc-type" id="excType">
-          <option value="exclude">제외</option>
-          <option value="extra">추가</option>
+      <!-- 제외/추가 달력 UI -->
+      <div style="display:flex;gap:7px;margin-bottom:9px;align-items:center">
+        <select class="fi" id="excType" style="max-width:90px;margin-bottom:0">
+          <option value="exclude">❌ 제외</option>
+          <option value="extra">✅ 추가</option>
         </select>
-        <button class="btn-add-e" onclick="addExcDate()">추가</button>
+        <span style="font-size:.7rem;color:var(--dim)">달력에서 여러 날짜 클릭으로 선택</span>
       </div>
+      <!-- 월 네비게이션 -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <button onclick="excPrevMonth()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;width:28px;height:28px;cursor:pointer;font-size:.85rem">◀</button>
+        <span id="excMonthLabel" style="font-size:.82rem;font-weight:700;flex:1;text-align:center"></span>
+        <button onclick="excNextMonth()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;width:28px;height:28px;cursor:pointer;font-size:.85rem">▶</button>
+      </div>
+      <!-- 달력 그리드 -->
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:6px">
+        <div style="text-align:center;font-size:.62rem;color:#ff8a80;padding:3px">일</div>
+        <div style="text-align:center;font-size:.62rem;color:var(--dim);padding:3px">월</div>
+        <div style="text-align:center;font-size:.62rem;color:var(--dim);padding:3px">화</div>
+        <div style="text-align:center;font-size:.62rem;color:var(--dim);padding:3px">수</div>
+        <div style="text-align:center;font-size:.62rem;color:var(--dim);padding:3px">목</div>
+        <div style="text-align:center;font-size:.62rem;color:var(--dim);padding:3px">금</div>
+        <div style="text-align:center;font-size:.62rem;color:#82aaff;padding:3px">토</div>
+      </div>
+      <div id="excCalGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:10px"></div>
+      <!-- 현재 선택된 날짜 목록 -->
       <div class="exc-list" id="excList"></div>
     </div>
 
@@ -825,7 +854,7 @@ function defCfg() {
   return {
     pin:'1234', gasUrl:'',
     programName:'MISSION', missionName:'운동장 3바퀴 완주',
-    lapsRequired:3, missionWeekdays:[1,2,3,4,5],
+    monthlyLapGoal:0, missionWeekdays:[1,2,3,4,5],
     achieveThreshold:100,
     monthlyTargets:{},
     excludeDates:[], extraDates:[],
@@ -853,10 +882,12 @@ function calcAutoTarget(cfg2, y, m) {
   return c;
 }
 
+// 월별 목표 총 바퀴 수 반환 (0=미설정)
 function getTarget(cfg2, y, m) {
   const k=`${y}-${pad(m)}`;
-  if(cfg2.monthlyTargets&&cfg2.monthlyTargets[k]!==undefined&&cfg2.monthlyTargets[k]!=='') return Number(cfg2.monthlyTargets[k]);
-  return calcAutoTarget(cfg2, y, m);
+  if(cfg2.monthlyTargets&&cfg2.monthlyTargets[k]!==undefined&&cfg2.monthlyTargets[k]!=='')
+    return Number(cfg2.monthlyTargets[k]);
+  return cfg2.monthlyLapGoal || 0;
 }
 
 /* ══════════════════════════════════════════════
@@ -953,7 +984,7 @@ async function pushConfig(){
   // Build config object (exclude admin-only fields)
   const payload={
     programName:c.programName, missionName:c.missionName,
-    lapsRequired:c.lapsRequired, missionWeekdays:c.missionWeekdays,
+    monthlyLapGoal:c.monthlyLapGoal||0, missionWeekdays:c.missionWeekdays,
     classes:c.classes, monthlyTargets:c.monthlyTargets,
     achieveThreshold:c.achieveThreshold,
     excludeDates:c.excludeDates||[], extraDates:c.extraDates||[]
@@ -1094,7 +1125,7 @@ async function fetchToday(silent){
   const c=lc();
   if(!silent) document.getElementById('stuTable').innerHTML='<div class="loading-r"><div class="spn"></div> 데이터 불러오는 중…</div>';
   try{
-    const json = await gasGet(c.gasUrl, { action:'today', date:getToday(), lapsRequired:c.lapsRequired||3 });
+    const json = await gasGet(c.gasUrl, { action:'today', date:getToday() });
     todayData = json.data || [];
     renderTodayStats(); renderTodayTable();
     if(!silent) toast('✅ 오늘 데이터 ' + todayData.length + '건 로드 완료');
@@ -1126,21 +1157,21 @@ function renderTodayStats() {
   const { all, subMap } = buildAllStudents();
   const filtered = todayFilter === '__all__' ? all : all.filter(s => s.className === todayFilter);
   const total = filtered.length;
-  let done = 0, part = 0;
+  let submitted = 0, totalLapsToday = 0;
   filtered.forEach(s => {
     const rec = subMap[s.name + '|' + s.className];
-    // laps가 undefined면 미제출(-1로 구분)
-    const laps = rec !== undefined ? (rec.laps ?? 0) : -1;
-    if (laps >= req) done++;
-    else if (laps > 0) part++;
+    if (rec !== undefined && rec.laps > 0) {
+      submitted++;
+      totalLapsToday += rec.laps;
+    }
   });
-  const notSubmitted = total - done - part;
-  const pct = total > 0 ? Math.round(done / total * 100) : 0;
-  document.getElementById('pcCnt').textContent = `${done} / ${total}명`;
+  const notSubmitted = total - submitted;
+  const pct = total > 0 ? Math.round(submitted / total * 100) : 0;
+  document.getElementById('pcCnt').textContent = `${submitted} / ${total}명 제출`;
   document.getElementById('progFill').style.width = pct + '%';
   document.getElementById('todayStats').innerHTML = `
-    <div class="sc"><div class="sv" style="color:var(--ok)">${done}</div><div class="sl">완료</div></div>
-    <div class="sc"><div class="sv" style="color:var(--a2)">${part}</div><div class="sl">진행 중</div></div>
+    <div class="sc"><div class="sv" style="color:var(--ok)">${submitted}</div><div class="sl">제출</div></div>
+    <div class="sc"><div class="sv" style="color:var(--a2)">${totalLapsToday}</div><div class="sl">오늘 총 바퀴</div></div>
     <div class="sc"><div class="sv" style="color:var(--dim)">${notSubmitted}</div><div class="sl">미제출</div></div>`;
 }
 
@@ -1158,8 +1189,8 @@ function renderTodayTable(){
     members.forEach(s=>{
       const r=subMap[s.name+'|'+s.className],laps=r?r.laps||0:0;
       const dots=[1,2,3].map(n=>`<div class="pip ${laps>=n?'on'+n:'off'}">${laps>=n?'✓':n}</div>`).join('');
-      const sc3=laps>=req?'done':laps>0?'part':'none';
-      const st=laps>=req?'완료 ✓':laps>0?`${laps}/${req}`:'미제출';
+      const sc3=laps>0?'done':'none';
+      const st=laps>0?`${laps}바퀴`:'미제출';
       const tm=r?.submittedAt?`<div style="font-size:.6rem;color:var(--dim)">${r.submittedAt}${r.isProxy?' (대리)':''}</div>`:'';
       html+=`<div class="st-row" style="cursor:pointer" onclick="openSdp('${s.name.replace(/'/g,"&#39;")}','${g.replace(/'/g,"&#39;")}')"><div><div class="sn">${s.name}</div><div class="sc2">${s.className}${tm}</div></div><div class="laps-pip">${dots}</div><div class="sst ${sc3}">${st}</div></div>`;
     });
@@ -1182,14 +1213,14 @@ function cm(d){vm.m+=d;if(vm.m>12){vm.m=1;vm.y++;}if(vm.m<1){vm.m=12;vm.y--;}ini
 
 async function fetchMonthly(silent){
   const c=lc();
-  const month=`${vm.y}-${pad(vm.m)}`,req=c.lapsRequired||3,target=getTarget(c,vm.y,vm.m);
+  const month=`${vm.y}-${pad(vm.m)}`, target=getTarget(c,vm.y,vm.m);
   const thresh=(c.achieveThreshold||100)/100;
   if(!silent) document.getElementById('rankList').innerHTML='<div class="loading-r"><div class="spn"></div> 순위표 불러오는 중…</div>';
   try{
-    const json = await gasGet(c.gasUrl, { action:'leaderboard', month, lapsRequired:req });
+    const json = await gasGet(c.gasUrl, { action:'leaderboard', month });
     mData=(json.data||[]).map(r=>({...r,
-      pct:target>0?Math.min(100,Math.round(r.completeDays/target*100)):0,
-      achieved:target>0&&r.completeDays>=target*thresh
+      pct:target>0?Math.min(100,Math.round(r.totalLaps/target*100)):0,
+      achieved:target>0&&r.totalLaps>=target*thresh
     }));
     renderMonthly();
     if(!silent) toast('✅ 순위표 ' + mData.length + '명 로드 완료');
@@ -1206,12 +1237,13 @@ async function fetchMonthly(silent){
 function renderMonthly(){
   const c=lc(),target=getTarget(c,vm.y,vm.m),thresh=(c.achieveThreshold||100)/100;
   const filtered=mFilter==='__all__'?mData:mData.filter(r=>r.className===mFilter);
-  const sorted=[...filtered].sort((a,b)=>b.completeDays-a.completeDays||b.totalLaps-a.totalLaps);
-  const achieved=sorted.filter(r=>r.completeDays>=target*thresh&&target>0).length;
+  const sorted=[...filtered].sort((a,b)=>b.totalLaps-a.totalLaps);
+  const achieved=sorted.filter(r=>target>0&&r.totalLaps>=target*thresh).length;
+  const grandTotal=sorted.reduce((s,r)=>s+r.totalLaps,0);
   document.getElementById('mStats').innerHTML=`
-    <div class="sc"><div class="sv" style="color:var(--ok)">${achieved}</div><div class="sl">목표 달성</div></div>
-    <div class="sc"><div class="sv" style="color:var(--a2)">${sorted.reduce((s,r)=>s+r.totalLaps,0)}</div><div class="sl">총 바퀴</div></div>
-    <div class="sc"><div class="sv" style="color:var(--accent)">${target}</div><div class="sl">이달 목표</div></div>`;
+    <div class="sc"><div class="sv" style="color:var(--a2)">${grandTotal}</div><div class="sl">총 바퀴 수</div></div>
+    <div class="sc"><div class="sv" style="color:var(--accent)">${target>0?target:'—'}</div><div class="sl">목표 바퀴</div></div>
+    <div class="sc"><div class="sv" style="color:var(--ok)">${target>0?achieved:'—'}</div><div class="sl">목표 달성</div></div>\`;
   const em=['🥇','🥈','🥉'];
 
   // 동점자 처리: 완료일 + 총바퀴 모두 같으면 같은 순위
@@ -1220,7 +1252,7 @@ function renderMonthly(){
     // i>0이고 이전 학생과 완료일·바퀴수 모두 같으면 같은 순위 유지
     if(i > 0){
       const prev = sorted[i-1];
-      if(r.completeDays !== prev.completeDays || r.totalLaps !== prev.totalLaps){
+      if(r.totalLaps !== prev.totalLaps){
         displayRank = i + 1;  // 동점 아님 → 실제 순위(건너뜀 포함)
       }
       // 동점이면 displayRank 그대로 유지
@@ -1231,7 +1263,7 @@ function renderMonthly(){
     const rankLabel = rank<=3 ? em[rank-1] : rank;
     return `<div class="rrow ${tc}">
       <div class="rn ${nc}">${rankLabel}</div>
-      <div class="ri2"><div class="rname">${r.name}${r.achieved?'<span style="font-size:.6rem;background:rgba(6,214,160,.2);color:var(--ok);border-radius:10px;padding:1px 6px;font-weight:700;margin-left:5px">달성</span>':''}</div><div class="rsub">${r.className} · ${r.completeDays}일 · ${r.totalLaps}바퀴</div></div>
+      <div class="ri2"><div class="rname">${r.name}${r.achieved?'<span style="font-size:.6rem;background:rgba(6,214,160,.2);color:var(--ok);border-radius:10px;padding:1px 6px;font-weight:700;margin-left:5px">달성</span>':''}</div><div class="rsub">${r.className} · ${r.totalLaps}바퀴${target>0?' · '+r.pct+'%':''}</div></div>
       <div class="rr"><div class="rpct" style="color:${bc}">${r.pct}%</div><div class="rbar-bg"><div class="rbar" style="width:${r.pct}%;background:${bc}"></div></div></div>
     </div>`;
   }).join(''):'<div class="empty-s">🔄 버튼을 눌러 순위표를 불러오세요</div>';
@@ -1338,7 +1370,7 @@ async function doProxy(){
       await fetch(c.gasUrl,{method:'POST',mode:'no-cors',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({date:dt,name,className:prx.cls,
-          laps:prx.laps,lapsRequired:c.lapsRequired||3,
+          laps:prx.laps,lapsRequired:3,
           submittedAt:nowTime(),isProxy:true})});
       done++;
     } catch { fail++; }
@@ -1447,21 +1479,19 @@ function renderSdp(dayMap){
     if(te) dayMap[td]=te.laps||0;
   }
 
-  // 통계 계산
-  let comp=0, totalLaps=0;
+  // 통계 계산: 총 바퀴 수
+  let totalLaps=0;
   for(let i=1;i<=days;i++){
     const dt=`${prefix}-${pad(i)}`; if(dt>td) break;
-    const laps=dayMap[dt]||0;
-    totalLaps+=laps;
-    if(laps>=req) comp++;
+    totalLaps+=dayMap[dt]||0;
   }
-  const pct=target>0?Math.min(100,Math.round(comp/target*100)):0;
+  const pct=target>0?Math.min(100,Math.round(totalLaps/target*100)):0;
 
   document.getElementById('sdpMlbl').textContent=`${y}년 ${m}월`;
   document.getElementById('sdpStats').innerHTML=`
-    <div class="sdp-sc"><div class="v" style="color:var(--ok)">${comp}</div><div class="l">완료일</div></div>
-    <div class="sdp-sc"><div class="v" style="color:var(--a2)">${target}</div><div class="l">이달 목표</div></div>
-    <div class="sdp-sc"><div class="v" style="color:var(--accent)">${pct}<span style="font-size:.7rem">%</span></div><div class="l">달성률</div></div>`;
+    <div class="sdp-sc"><div class="v" style="color:var(--ok)">${totalLaps}</div><div class="l">총 바퀴</div></div>
+    <div class="sdp-sc"><div class="v" style="color:var(--a2)">${target>0?target:'—'}</div><div class="l">목표 바퀴</div></div>
+    <div class="sdp-sc"><div class="v" style="color:var(--accent)">${target>0?pct+'%':'—'}</div><div class="l">달성률</div></div>`;
 
   // 달력 렌더링
   const fdow=new Date(y,m-1,1).getDay();
@@ -1474,8 +1504,9 @@ function renderSdp(dayMap){
     const laps=dayMap.hasOwnProperty(dt) ? dayMap[dt] : -1;  // -1: 기록 없음
 
     let cls2='sdp-cell';
-    if(!fut && laps>=req)   cls2+=' c3';
-    else if(!fut && laps>0) cls2+=' c'+Math.min(laps,2);
+    if(!fut && laps>=10)     cls2+=' c3';
+    else if(!fut && laps>=3) cls2+=' c2';
+    else if(!fut && laps>0)  cls2+=' c1';
     if(fut)              cls2+=' future';
     if(!isMission&&!fut) cls2+=' nm';
     if(ist)              cls2+=' tod';
@@ -1528,7 +1559,7 @@ async function saveEditDay(){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         date:sdp.editDate, name:sdp.name, className:sdp.cls,
-        laps:sdp.editLaps, lapsRequired:cfg2.lapsRequired||3,
+        laps:sdp.editLaps, lapsRequired:3,
         submittedAt:nowTime(), isProxy:true, isUpdate:true
       })});
     toast(`✅ ${sdp.name} ${sdp.editDate} → ${sdp.editLaps}바퀴 수정 완료`);
@@ -1596,40 +1627,83 @@ function loadCfgForm(){
 }
 
 /* Exception dates */
-function renderExcList(c){
+/* ── 제외/추가 날짜 달력 ── */
+let excCal = { y: new Date().getFullYear(), m: new Date().getMonth()+1 };
+
+function excPrevMonth(){ excCal.m--; if(excCal.m<1){excCal.m=12;excCal.y--;} renderExcCal(); }
+function excNextMonth(){ excCal.m++; if(excCal.m>12){excCal.m=1;excCal.y++;} renderExcCal(); }
+
+function renderExcCal(){
+  const cfg2=lc();
+  const {y,m}=excCal;
+  const days=new Date(y,m,0).getDate();
+  const fdow=new Date(y,m-1,1).getDay();
+  const excDates=cfg2.excludeDates||[];
+  const extDates=cfg2.extraDates||[];
+  const today=getToday();
+
+  document.getElementById('excMonthLabel').textContent=`${y}년 ${m}월`;
+
+  let html='';
+  for(let i=0;i<fdow;i++) html+='<div></div>';
+  for(let i=1;i<=days;i++){
+    const dt=`${y}-${pad(m)}-${pad(i)}`;
+    const isExc=excDates.includes(dt), isExt=extDates.includes(dt), isTod=dt===today;
+    let bg='var(--card2)',color='var(--text)',border='1px solid var(--border)';
+    if(isExc){bg='rgba(239,71,111,.2)';color='var(--err)';border='1px solid rgba(239,71,111,.4)';}
+    else if(isExt){bg='rgba(6,214,160,.2)';color='var(--ok)';border='1px solid rgba(6,214,160,.4)';}
+    if(isTod) border='2px solid var(--accent)';
+    html+=`<div onclick="toggleExcDate('${dt}')" style="aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.74rem;font-weight:600;cursor:pointer;background:${bg};color:${color};border:${border};transition:all .15s">${i}</div>`;
+  }
+  document.getElementById('excCalGrid').innerHTML=html;
+  renderExcList(cfg2);
+}
+
+function toggleExcDate(dt){
+  const cfg2=lc();
+  const tp=document.getElementById('excType').value;
+  if(!cfg2.excludeDates) cfg2.excludeDates=[];
+  if(!cfg2.extraDates) cfg2.extraDates=[];
+  const isExc=cfg2.excludeDates.includes(dt), isExt=cfg2.extraDates.includes(dt);
+
+  if(tp==='exclude'){
+    if(isExc){
+      // 이미 제외됨 → 해제
+      cfg2.excludeDates=cfg2.excludeDates.filter(d=>d!==dt);
+    } else {
+      cfg2.excludeDates.push(dt);
+      cfg2.extraDates=cfg2.extraDates.filter(d=>d!==dt);
+    }
+  } else {
+    if(isExt){
+      cfg2.extraDates=cfg2.extraDates.filter(d=>d!==dt);
+    } else {
+      cfg2.extraDates.push(dt);
+      cfg2.excludeDates=cfg2.excludeDates.filter(d=>d!==dt);
+    }
+  }
+  sc(cfg2); renderExcCal();
+}
+
+function renderExcList(cfg2){
   const excList=document.getElementById('excList');
-  const all=[...(c.excludeDates||[]).map(d=>({d,t:'exclude'})),...(c.extraDates||[]).map(d=>({d,t:'extra'}))].sort((a,b)=>a.d.localeCompare(b.d));
-  if(!all.length){excList.innerHTML='<div style="font-size:.72rem;color:var(--dim);padding:6px">예외 날짜가 없습니다</div>';return;}
-  excList.innerHTML=all.map((item,i)=>`
+  const all=[...(cfg2.excludeDates||[]).map(d=>({d,t:'exclude'})),...(cfg2.extraDates||[]).map(d=>({d,t:'extra'}))].sort((a,b)=>a.d.localeCompare(b.d));
+  if(!all.length){excList.innerHTML='<div style="font-size:.7rem;color:var(--dim);padding:6px">선택된 날짜가 없습니다. 달력에서 날짜를 클릭하세요.</div>';return;}
+  excList.innerHTML=all.map(item=>`
     <div class="exc-item">
       <div class="exc-date">${item.d}</div>
-      <span class="exc-type-badge ${item.t}">${item.t==='exclude'?'제외':'추가'}</span>
-      <button class="btn-exc-rm" onclick="removeExc('${item.d}','${item.t}')">✕</button>
+      <span class="exc-type-badge ${item.t}">${item.t==='exclude'?'❌ 제외':'✅ 추가'}</span>
+      <button class="btn-exc-rm" onclick="toggleExcDate('${item.d}')">✕</button>
     </div>`).join('');
 }
 
-function addExcDate(){
-  const dt=document.getElementById('excDate').value;
-  const tp=document.getElementById('excType').value;
-  if(!dt){toast('날짜를 선택하세요','warn');return;}
-  const c=lc();
-  if(!c.excludeDates) c.excludeDates=[];
-  if(!c.extraDates) c.extraDates=[];
-  if(tp==='exclude'){
-    if(!c.excludeDates.includes(dt)) c.excludeDates.push(dt);
-    c.extraDates=c.extraDates.filter(d=>d!==dt);
-  } else {
-    if(!c.extraDates.includes(dt)) c.extraDates.push(dt);
-    c.excludeDates=c.excludeDates.filter(d=>d!==dt);
-  }
-  sc(c);renderExcList(c);
-}
-
+// 하위 호환: 기존 addExcDate 호출 보호
+function addExcDate(){ renderExcCal(); }
 function removeExc(dt,tp){
-  const c=lc();
-  if(tp==='exclude') c.excludeDates=(c.excludeDates||[]).filter(d=>d!==dt);
-  else c.extraDates=(c.extraDates||[]).filter(d=>d!==dt);
-  sc(c);renderExcList(c);
+  const cfg2=lc();
+  if(tp==='exclude') cfg2.excludeDates=(cfg2.excludeDates||[]).filter(d=>d!==dt);
+  else cfg2.extraDates=(cfg2.extraDates||[]).filter(d=>d!==dt);
+  sc(cfg2); renderExcCal();
 }
 
 function saveCfg(){
@@ -1804,6 +1878,22 @@ function toast(msg,type){
 /* ══ INIT ══ */
 document.getElementById('gasCode').textContent=getGasScript();
 initPin();
+
+/* 자동 새로고침: 로그인 상태에서 5분마다 */
+setInterval(async ()=>{
+  if(document.getElementById('scMain').style.display!=='flex') return;
+  const c=lc(); if(!c.gasUrl) return;
+  try{
+    const activeView=document.querySelector('.view.active')?.id;
+    if(activeView==='view-today'){
+      await fetchToday(true);
+      toast('🔄 자동 새로고침');
+    } else if(activeView==='view-monthly'){
+      await fetchMonthly(true);
+      toast('🔄 자동 새로고침');
+    }
+  } catch(_){}
+}, 5 * 60 * 1000);
 </script>
 </body>
 </html>
