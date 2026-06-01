@@ -440,11 +440,7 @@ input[type=date].exc-inp::-webkit-calendar-picker-indicator{filter:invert(.6)}
       <input class="fi" type="text" id="cfgProg" placeholder="예) MISSION" maxlength="20">
       <div class="fl">미션 설명</div>
       <input class="fi" type="text" id="cfgMis" placeholder="예) 운동장 3바퀴 완주" maxlength="30">
-      <div class="fl">1회 완료 기준 바퀴 수</div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-        <input class="fi" type="number" id="cfgLaps" min="1" max="999" placeholder="3" style="width:80px;margin-bottom:0">
-        <span style="font-size:.76rem;color:var(--dim)">바퀴 이상이면 하루 미션 완료</span>
-      </div>
+
       <div class="fl">월별 총 목표 바퀴 수 (선택)</div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
         <input class="fi" type="number" id="cfgMonthlyLapGoal" min="0" max="9999" placeholder="예) 60" style="width:90px;margin-bottom:0">
@@ -962,7 +958,7 @@ function gv(name){
   document.getElementById('nav-'+name).classList.add('active');
   if(name==='today')   initToday();
   if(name==='monthly') initMonthly();
-  if(name==='settings') loadCfgForm();
+  if(name==='settings'){ loadCfgForm(); renderExcCal(); }
 }
 
 /* ── Sync Status Bar ── */
@@ -1116,7 +1112,7 @@ let todayFilter='__all__', todayData=[];
 function initToday(){
   const c=lc();
   document.getElementById('tdDate').textContent=todayLabel();
-  document.getElementById('tdMission').textContent=`미션: ${c.missionName||'…'}`;
+  document.getElementById('tdMission').textContent='미션: '+(c.missionName||'…');
   buildFilter('todayCls',c.classes,todayFilter,v=>{todayFilter=v;renderTodayTable();});
   renderTodayStats();renderTodayTable();
 }
@@ -1153,7 +1149,7 @@ function buildAllStudents() {
 }
 
 function renderTodayStats() {
-  const c = lc(), req = c.lapsRequired || 3;
+  const c = lc();
   const { all, subMap } = buildAllStudents();
   const filtered = todayFilter === '__all__' ? all : all.filter(s => s.className === todayFilter);
   const total = filtered.length;
@@ -1167,32 +1163,29 @@ function renderTodayStats() {
   });
   const notSubmitted = total - submitted;
   const pct = total > 0 ? Math.round(submitted / total * 100) : 0;
-  document.getElementById('pcCnt').textContent = `${submitted} / ${total}명 제출`;
+  document.getElementById('pcCnt').textContent = submitted+' / '+total+'명 제출';
   document.getElementById('progFill').style.width = pct + '%';
-  document.getElementById('todayStats').innerHTML = `
-    <div class="sc"><div class="sv" style="color:var(--ok)">${submitted}</div><div class="sl">제출</div></div>
-    <div class="sc"><div class="sv" style="color:var(--a2)">${totalLapsToday}</div><div class="sl">오늘 총 바퀴</div></div>
-    <div class="sc"><div class="sv" style="color:var(--dim)">${notSubmitted}</div><div class="sl">미제출</div></div>`;
+  document.getElementById('todayStats').innerHTML = '<div class="sc"><div class="sv" style="color:var(--ok)">'+submitted+'</div><div class="sl">제출</div></div><div class="sc"><div class="sv" style="color:var(--a2)">'+totalLapsToday+'</div><div class="sl">오늘 총 바퀴</div></div><div class="sc"><div class="sv" style="color:var(--dim)">'+notSubmitted+'</div><div class="sl">미제출</div></div>';
 }
 
 function renderTodayTable(){
-  const c=lc(),req=c.lapsRequired||3;
+  const c=lc();
   const { all, subMap } = buildAllStudents();
   const filtered=todayFilter==='__all__'?all:all.filter(s=>s.className===todayFilter);
   if(!filtered.length){document.getElementById('stuTable').innerHTML='<div class="empty-s">👤 학생 명단을 설정에서 추가하거나<br>🔄 새로고침으로 데이터를 불러오세요</div>';return;}
   const groups=c.classes.length?c.classes:[...new Set(filtered.map(s=>s.className))];
-  let html=`<div class="st-hdr"><div>이름 / 학반</div><div style="text-align:center">바퀴</div><div style="text-align:right">상태</div></div>`;
+  let html='<div class="st-hdr"><div>이름 / 학반</div><div style="text-align:center">바퀴</div><div style="text-align:right">상태</div></div>';
   groups.forEach(g=>{
     const members=filtered.filter(s=>s.className===g); if(!members.length)return;
-    const gDone=members.filter(s=>(subMap[s.name+'|'+s.className]?.laps||0)>=req).length;
-    html+=`<div class="grp-sep">▸ ${g} (${gDone}/${members.length})</div>`;
+    const gSubmitted=members.filter(s=>(subMap[s.name+'|'+s.className]?.laps||0)>0).length;
+    html+='<div class="grp-sep">▸ '+g+' ('+gSubmitted+'/'+members.length+')</div>';
     members.forEach(s=>{
       const r=subMap[s.name+'|'+s.className],laps=r?r.laps||0:0;
-      const dots=[1,2,3].map(n=>`<div class="pip ${laps>=n?'on'+n:'off'}">${laps>=n?'✓':n}</div>`).join('');
+      const dots=[1,2,3].map(n=>'<div class="pip '+(laps>=n?'on'+n:'off')+'">'+(laps>=n?'✓':n)+'</div>').join('');
       const sc3=laps>0?'done':'none';
-      const st=laps>0?`${laps}바퀴`:'미제출';
+      const st=laps>0?laps+'바퀴':'미제출';
       const tm=r?.submittedAt?`<div style="font-size:.6rem;color:var(--dim)">${r.submittedAt}${r.isProxy?' (대리)':''}</div>`:'';
-      html+=`<div class="st-row" style="cursor:pointer" onclick="openSdp('${s.name.replace(/'/g,"&#39;")}','${g.replace(/'/g,"&#39;")}')"><div><div class="sn">${s.name}</div><div class="sc2">${s.className}${tm}</div></div><div class="laps-pip">${dots}</div><div class="sst ${sc3}">${st}</div></div>`;
+      html+='<div class="st-row" style="cursor:pointer" onclick="openSdp(\''+s.name.replace(/'/g,'&#39;')+"','"+g.replace(/'/g,'&#39;')+'\')">'+'<div><div class="sn">'+s.name+'</div><div class="sc2">'+s.className+tm+'</div></div><div class="laps-pip">'+dots+'</div><div class="sst '+sc3+'">'+st+'</div></div>';
     });
   });
   document.getElementById('stuTable').innerHTML=html;
@@ -1205,7 +1198,7 @@ let vm={y:new Date().getFullYear(),m:new Date().getMonth()+1}, mFilter='__all__'
 
 function initMonthly(){
   const c=lc();
-  document.getElementById('mLbl').textContent=`${vm.y}년 ${vm.m}월`;
+  document.getElementById('mLbl').textContent=vm.y+'년 '+vm.m+'월';
   buildFilter('mCls',c.classes,mFilter,v=>{mFilter=v;renderMonthly();});
   if(mData.length) renderMonthly();
 }
@@ -1240,33 +1233,30 @@ function renderMonthly(){
   const sorted=[...filtered].sort((a,b)=>b.totalLaps-a.totalLaps);
   const achieved=sorted.filter(r=>target>0&&r.totalLaps>=target*thresh).length;
   const grandTotal=sorted.reduce((s,r)=>s+r.totalLaps,0);
-  document.getElementById('mStats').innerHTML=`
-    <div class="sc"><div class="sv" style="color:var(--a2)">${grandTotal}</div><div class="sl">총 바퀴 수</div></div>
-    <div class="sc"><div class="sv" style="color:var(--accent)">${target>0?target:'—'}</div><div class="sl">목표 바퀴</div></div>
-    <div class="sc"><div class="sv" style="color:var(--ok)">${target>0?achieved:'—'}</div><div class="sl">목표 달성</div></div>\`;
+  document.getElementById('mStats').innerHTML='<div class="sc"><div class="sv" style="color:var(--a2)">'+grandTotal+'</div><div class="sl">총 바퀴 수</div></div><div class="sc"><div class="sv" style="color:var(--accent)">'+(target>0?target:'—')+'</div><div class="sl">목표 바퀴</div></div><div class="sc"><div class="sv" style="color:var(--ok)">'+(target>0?achieved:'—')+'</div><div class="sl">목표 달성</div></div>';
   const em=['🥇','🥈','🥉'];
-
-  // 동점자 처리: 완료일 + 총바퀴 모두 같으면 같은 순위
   let displayRank = 1;
-  document.getElementById('rankList').innerHTML=sorted.length?sorted.map((r,i)=>{
-    // i>0이고 이전 학생과 완료일·바퀴수 모두 같으면 같은 순위 유지
-    if(i > 0){
-      const prev = sorted[i-1];
-      if(r.totalLaps !== prev.totalLaps){
-        displayRank = i + 1;  // 동점 아님 → 실제 순위(건너뜀 포함)
-      }
-      // 동점이면 displayRank 그대로 유지
-    }
-    const rank = displayRank;
-    const tc=rank<=3?'top'+rank:'', nc=rank<=3?'r'+rank:'';
-    const bc=r.pct>=100?'var(--ok)':r.pct>=50?'var(--a2)':'var(--org)';
-    const rankLabel = rank<=3 ? em[rank-1] : rank;
-    return `<div class="rrow ${tc}">
-      <div class="rn ${nc}">${rankLabel}</div>
-      <div class="ri2"><div class="rname">${r.name}${r.achieved?'<span style="font-size:.6rem;background:rgba(6,214,160,.2);color:var(--ok);border-radius:10px;padding:1px 6px;font-weight:700;margin-left:5px">달성</span>':''}</div><div class="rsub">${r.className} · ${r.totalLaps}바퀴${target>0?' · '+r.pct+'%':''}</div></div>
-      <div class="rr"><div class="rpct" style="color:${bc}">${r.pct}%</div><div class="rbar-bg"><div class="rbar" style="width:${r.pct}%;background:${bc}"></div></div></div>
-    </div>`;
-  }).join(''):'<div class="empty-s">🔄 버튼을 눌러 순위표를 불러오세요</div>';
+  let rankHtml = '';
+  if(sorted.length){
+    sorted.forEach((r,i)=>{
+      if(i>0 && r.totalLaps !== sorted[i-1].totalLaps) displayRank = i+1;
+      const rank=displayRank;
+      const bc=r.pct>=100?'var(--ok)':r.pct>=50?'var(--a2)':'var(--org)';
+      const medal=rank<=3?em[rank-1]:rank;
+      const badge=r.achieved?'<span style="font-size:.6rem;background:rgba(6,214,160,.2);color:var(--ok);border-radius:10px;padding:1px 6px;font-weight:700;margin-left:5px">달성</span>':'';
+      const pctTxt=target>0?' · '+r.pct+'%':'';
+      rankHtml+='<div class="rrow'+(rank<=3?' top'+rank:'')+'">'
+        +'<div class="rn'+(rank<=3?' r'+rank:'')+'">'+medal+'</div>'
+        +'<div class="ri2"><div class="rname">'+r.name+badge+'</div>'
+        +'<div class="rsub">'+r.className+' · '+r.totalLaps+'바퀴'+pctTxt+'</div></div>'
+        +'<div class="rr"><div class="rpct" style="color:'+bc+'">'+r.pct+'%</div>'
+        +'<div class="rbar-bg"><div class="rbar" style="width:'+r.pct+'%;background:'+bc+'"></div></div></div>'
+        +'</div>';
+    });
+  } else {
+    rankHtml='<div class="empty-s">🔄 버튼을 눌러 순위표를 불러오세요</div>';
+  }
+  document.getElementById('rankList').innerHTML=rankHtml;
 }
 
 /* ══════════════════════════════════════════════
@@ -1280,9 +1270,10 @@ let prx = { cls:'', stuList:[], laps:0 };  // stuList: 다중 선택된 학생 �
 function buildProxyCls(){
   const c=lc(), g=document.getElementById('prxCls');
   if(!c.classes.length){ g.innerHTML='<div style="font-size:.76rem;color:var(--dim)">설정에서 학반을 추가하세요</div>'; return; }
-  g.innerHTML=c.classes.map(cl=>
-    `<button class="sel-b ${prx.cls===cl?'on':''}" onclick="prxSelCls('${cl.replace(/'/g,"\'")}')"> ${cl}</button>`
-  ).join('');
+  g.innerHTML=c.classes.map(cl=>{
+    var onCls=prx.cls===cl?'on':'';
+    return '<button class="sel-b '+onCls+'" onclick="prxSelCls(\''+cl.replace(/'/g,"\\'")+'\')">' + cl + '</button>';
+  }).join('');
 }
 
 function prxSelCls(cls){
@@ -1299,12 +1290,10 @@ function buildProxyStu(){
   bar.style.display='flex';
   g.innerHTML=members.map(s=>{
     const sel=prx.stuList.includes(s.name);
-    return `<button class="stu-b ${sel?'on':''}" onclick="prxToggleStu('${s.name.replace(/'/g,"\'")}')">
-      ${sel?'✓ ':''}${s.name}
-    </button>`;
+    return '<button class="stu-b '+(sel?'on':'')+' " onclick="prxToggleStu(\''+s.name.replace(/'/g,"\\'")+'\'">'+(sel?'✓ ':'')+s.name+'</button>';
   }).join('');
   const cnt=document.getElementById('multiCount');
-  cnt.textContent = prx.stuList.length > 0 ? `${prx.stuList.length}명 선택됨` : '';
+  cnt.textContent = prx.stuList.length > 0 ? prx.stuList.length+'명 선택됨' : '';
 }
 
 function prxToggleStu(name){
@@ -1326,10 +1315,10 @@ function prxSelNone(){
 }
 
 function buildProxyLap(){
-  const c=lc(), req=c.lapsRequired||3;
-  document.getElementById('prxLap').innerHTML=Array.from({length:req},(_,i)=>{
-    const n=i+1, selCls=prx.laps===n?`sel${Math.min(n,3)}`:'';
-    return `<div class="ls-b ${selCls}" onclick="prxSelLap(${n})">${n}<span>${n}바퀴</span></div>`;
+  var opts=[1,2,3,4,5,6,7,8,9,10];
+  document.getElementById('prxLap').innerHTML=opts.map(function(n){
+    var selCls=prx.laps===n?'sel'+Math.min(n,3):'';
+    return '<div class="ls-b '+selCls+'" onclick="prxSelLap('+n+')" style="width:48px;height:48px;font-size:1.15rem">'+n+'<span>바퀴</span></div>';
   }).join('');
 }
 
@@ -1345,9 +1334,8 @@ function updPrxConfirm(){
       ? prx.stuList.join(', ')
       : prx.stuList.slice(0,2).join(', ') + ' 외 ' + (prx.stuList.length-2) + '명';
     document.getElementById('prxVal').textContent =
-      `[${prx.cls}] ${names} · ${dt} · ${prx.laps}/${c.lapsRequired||3}바퀴`;
-    document.getElementById('btnPrx').textContent =
-      `✅ ${prx.stuList.length}명 대리 제출하기`;
+      '['+prx.cls+'] '+names+' · '+dt+' · '+prx.laps+'바퀴';
+    document.getElementById('btnPrx').textContent = '✅ '+prx.stuList.length+'명 대리 제출하기';
   }
 }
 
@@ -1359,7 +1347,7 @@ async function doProxy(){
   const names = prx.stuList.length<=3
     ? prx.stuList.join(', ')
     : prx.stuList.slice(0,2).join(', ') + ' 외 ' + (prx.stuList.length-2) + '명';
-  if(!confirm(`[${prx.cls}] ${names}의 ${dt} 기록을 ${prx.laps}바퀴로 제출하시겠습니까?`)) return;
+  if(!confirm('['+prx.cls+'] '+names+'의 '+dt+' 기록을 '+prx.laps+'바퀴로 제출하시겠습니까?')) return;
 
   const btn=document.getElementById('btnPrx');
   btn.disabled=true; btn.textContent=`0/${prx.stuList.length}명 제출 중…`;
@@ -1370,16 +1358,16 @@ async function doProxy(){
       await fetch(c.gasUrl,{method:'POST',mode:'no-cors',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({date:dt,name,className:prx.cls,
-          laps:prx.laps,lapsRequired:3,
+          laps:prx.laps,
           submittedAt:nowTime(),isProxy:true})});
       done++;
     } catch { fail++; }
-    btn.textContent=`${done}/${prx.stuList.length}명 제출 중…`;
+    btn.textContent=done+'/'+prx.stuList.length+'명 제출 중…';
     await new Promise(r=>setTimeout(r,80)); // GAS 과부하 방지
   }
 
-  if(fail===0) toast(`✅ ${done}명 대리 제출 완료!`);
-  else toast(`⚠️ ${done}명 성공 / ${fail}명 실패`, 'warn');
+  if(fail===0) toast('✅ '+done+'명 대리 제출 완료!');
+  else toast('⚠️ '+done+'명 성공 / '+fail+'명 실패', 'warn');
 
   // 초기화
   prx={cls:'',stuList:[],laps:0};
@@ -1466,7 +1454,7 @@ async function loadSdpMonth(){
 }
 
 function renderSdp(dayMap){
-  const cfg2=lc(), req=cfg2.lapsRequired||3;
+  const cfg2=lc();
   const {y,m,name} = sdp;
   const prefix=`${y}-${pad(m)}`;
   const td=getToday();
@@ -1487,11 +1475,8 @@ function renderSdp(dayMap){
   }
   const pct=target>0?Math.min(100,Math.round(totalLaps/target*100)):0;
 
-  document.getElementById('sdpMlbl').textContent=`${y}년 ${m}월`;
-  document.getElementById('sdpStats').innerHTML=`
-    <div class="sdp-sc"><div class="v" style="color:var(--ok)">${totalLaps}</div><div class="l">총 바퀴</div></div>
-    <div class="sdp-sc"><div class="v" style="color:var(--a2)">${target>0?target:'—'}</div><div class="l">목표 바퀴</div></div>
-    <div class="sdp-sc"><div class="v" style="color:var(--accent)">${target>0?pct+'%':'—'}</div><div class="l">달성률</div></div>`;
+  document.getElementById('sdpMlbl').textContent=y+'년 '+m+'월';
+  document.getElementById('sdpStats').innerHTML='<div class="sdp-sc"><div class="v" style="color:var(--ok)">'+totalLaps+'</div><div class="l">총 바퀴</div></div><div class="sdp-sc"><div class="v" style="color:var(--a2)">'+(target>0?target:'—')+'</div><div class="l">목표 바퀴</div></div><div class="sdp-sc"><div class="v" style="color:var(--accent)">'+(target>0?pct+'%':'—')+'</div><div class="l">달성률</div></div>';
 
   // 달력 렌더링
   const fdow=new Date(y,m-1,1).getDay();
@@ -1512,25 +1497,25 @@ function renderSdp(dayMap){
     if(ist)              cls2+=' tod';
     if(sdp.editDate===dt) cls2+=' editing';
 
-    const lbl=laps>=req?'✓':laps>0?laps:i;
-    const sub=laps>0&&laps<req?`<div class="csub">${laps}바퀴</div>`:'';
-    cal+=`<div class="${cls2}" onclick="sdpClickDay('${dt}',${laps<0?0:laps})">${lbl}${sub}</div>`;
+    const lbl=laps>0?laps:i;
+    const sub=laps>0?'<div class="csub">'+laps+'바퀴</div>':'';
+    cal+='<div class="'+cls2+'" onclick="sdpClickDay(\''+dt+'\','+(laps<0?0:laps)+')">'+lbl+sub+'</div>';
   }
   document.getElementById('sdpCal').innerHTML=cal;
 }
 
 function sdpClickDay(dt, currentLaps){
-  const c=lc(), req=c.lapsRequired||3;
+  const c=lc();
   sdp.editDate=dt; sdp.editLaps=currentLaps<0?0:currentLaps;
 
   document.getElementById('editLbl').textContent=dt;
   document.getElementById('editRow').classList.add('on');
 
-  // Build lap buttons: 0 ~ req
-  let btns='<button class="elb sel0" onclick="sdpSetLaps(0)">0바퀴<br><span style="font-size:.6rem">삭제</span></button>';
-  for(let n=1;n<=req;n++){
-    const selCls=sdp.editLaps===n?'sel'+Math.min(n,3):'';
-    btns+=`<button class="elb ${selCls}" onclick="sdpSetLaps(${n})">${n}바퀴${n>=req?'<br><span style="font-size:.6rem">완료</span>':''}</button>`;
+  // 바퀴 버튼 0~10 (일일 기준 없음)
+  var btns='<button class="elb sel0" onclick="sdpSetLaps(0)">0바퀴<br><span style="font-size:.6rem">삭제</span></button>';
+  for(var n=1;n<=10;n++){
+    var selCls2=sdp.editLaps===n?'sel'+Math.min(n,3):'';
+    btns+='<button class="elb '+selCls2+'" onclick="sdpSetLaps('+n+')">'+n+'바퀴</button>';
   }
   // Mark current selection
   document.getElementById('editBtns').innerHTML=btns;
@@ -1559,10 +1544,10 @@ async function saveEditDay(){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         date:sdp.editDate, name:sdp.name, className:sdp.cls,
-        laps:sdp.editLaps, lapsRequired:3,
+        laps:sdp.editLaps,
         submittedAt:nowTime(), isProxy:true, isUpdate:true
       })});
-    toast(`✅ ${sdp.name} ${sdp.editDate} → ${sdp.editLaps}바퀴 수정 완료`);
+    toast('✅ '+sdp.name+' '+sdp.editDate+' → '+sdp.editLaps+'바퀴 수정 완료');
 
     // 캐시 업데이트 (재요청 없이 즉시 반영)
     const key=sdp.editDate.substring(0,7);
@@ -1595,179 +1580,42 @@ document.getElementById('sdpOv').addEventListener('click',e=>{
 const MONTHS=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 
 function loadCfgForm(){
-  const c=lc();
+  var c=lc();
   document.getElementById('cfgGas').value=c.gasUrl||'';
   document.getElementById('cfgProg').value=c.programName||'';
   document.getElementById('cfgMis').value=c.missionName||'';
-  document.getElementById('cfgLaps').value=c.lapsRequired||3;
   document.getElementById('cfgThresh').value=c.achieveThreshold||100;
-  const wd=c.missionWeekdays||[1,2,3,4,5];
-  for(let i=0;i<7;i++){const el=document.getElementById('dw'+i);if(el)el.checked=wd.includes(i);}
+  document.getElementById('cfgMonthlyLapGoal').value=c.monthlyLapGoal||0;
+  var wd=c.missionWeekdays||[1,2,3,4,5];
+  for(var i=0;i<7;i++){var el=document.getElementById('dw'+i);if(el)el.checked=wd.includes(i);}
   // Exception dates
   renderExcList(c);
-  // Monthly targets — show current year ±1
-  const now=new Date();
-  let mtHtml='';
-  for(let yr=now.getFullYear()-1;yr<=now.getFullYear()+1;yr++){
-    for(let mo=1;mo<=12;mo++){
-      const key=`${yr}-${pad(mo)}`;
-      const auto=calcAutoTarget(c,yr,mo);
-      const stored=(c.monthlyTargets&&c.monthlyTargets[key]!==undefined)?c.monthlyTargets[key]:'';
-      const isNow=(yr===now.getFullYear()&&mo===now.getMonth()+1);
-      mtHtml+=`<div class="mt-item" ${isNow?'style="border:1px solid rgba(78,168,222,.3)"':''}>
-        <div class="mt-month">${yr}년 ${MONTHS[mo-1]}${isNow?'<span style="color:var(--accent);font-size:.6rem;margin-left:4px">이달</span>':''}</div>
-        <div class="mt-auto">자동: ${auto}일</div>
-        <div class="mt-row"><input type="number" class="mt-inp" id="mt_${key}" min="1" max="31" placeholder="${auto}" value="${stored}"><span class="mt-unit">일</span></div>
-      </div>`;
+  renderExcCal();
+  // Monthly targets — current year ±1
+  var now=new Date();
+  var mtHtml='';
+  for(var yr=now.getFullYear()-1;yr<=now.getFullYear()+1;yr++){
+    for(var mo=1;mo<=12;mo++){
+      var key=yr+'-'+pad(mo);
+      var auto=calcAutoTarget(c,yr,mo);
+      var stored=(c.monthlyTargets&&c.monthlyTargets[key]!==undefined)?c.monthlyTargets[key]:'';
+      var isNow=(yr===now.getFullYear()&&mo===now.getMonth()+1);
+      var border=isNow?' style="border:1px solid rgba(78,168,222,.3)"':'';
+      var badge=isNow?'<span style="color:var(--accent);font-size:.6rem;margin-left:4px">이달</span>':'';
+      mtHtml+='<div class="mt-item"'+border+'>'
+        +'<div class="mt-month">'+yr+'년 '+MONTHS[mo-1]+badge+'</div>'
+        +'<div class="mt-auto">자동: '+auto+'일</div>'
+        +'<div class="mt-row">'
+        +'<input type="number" class="mt-inp" id="mt_'+key+'" min="1" max="31" placeholder="'+auto+'" value="'+stored+'">'
+        +'<span class="mt-unit">일</span></div>'
+        +'</div>';
     }
   }
   document.getElementById('mtGrid').innerHTML=mtHtml;
-  renderClsChips(c);renderRosterUi(c);populateRCls(c.classes);
+  renderClsChips(c);
+  renderRosterUi(c);
+  populateRCls(c.classes);
   setSsbState(c.gasUrl?'idle':'none');
-}
-
-/* Exception dates */
-/* ── 제외/추가 날짜 달력 ── */
-let excCal = { y: new Date().getFullYear(), m: new Date().getMonth()+1 };
-
-function excPrevMonth(){ excCal.m--; if(excCal.m<1){excCal.m=12;excCal.y--;} renderExcCal(); }
-function excNextMonth(){ excCal.m++; if(excCal.m>12){excCal.m=1;excCal.y++;} renderExcCal(); }
-
-function renderExcCal(){
-  const cfg2=lc();
-  const {y,m}=excCal;
-  const days=new Date(y,m,0).getDate();
-  const fdow=new Date(y,m-1,1).getDay();
-  const excDates=cfg2.excludeDates||[];
-  const extDates=cfg2.extraDates||[];
-  const today=getToday();
-
-  document.getElementById('excMonthLabel').textContent=`${y}년 ${m}월`;
-
-  let html='';
-  for(let i=0;i<fdow;i++) html+='<div></div>';
-  for(let i=1;i<=days;i++){
-    const dt=`${y}-${pad(m)}-${pad(i)}`;
-    const isExc=excDates.includes(dt), isExt=extDates.includes(dt), isTod=dt===today;
-    let bg='var(--card2)',color='var(--text)',border='1px solid var(--border)';
-    if(isExc){bg='rgba(239,71,111,.2)';color='var(--err)';border='1px solid rgba(239,71,111,.4)';}
-    else if(isExt){bg='rgba(6,214,160,.2)';color='var(--ok)';border='1px solid rgba(6,214,160,.4)';}
-    if(isTod) border='2px solid var(--accent)';
-    html+=`<div onclick="toggleExcDate('${dt}')" style="aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.74rem;font-weight:600;cursor:pointer;background:${bg};color:${color};border:${border};transition:all .15s">${i}</div>`;
-  }
-  document.getElementById('excCalGrid').innerHTML=html;
-  renderExcList(cfg2);
-}
-
-function toggleExcDate(dt){
-  const cfg2=lc();
-  const tp=document.getElementById('excType').value;
-  if(!cfg2.excludeDates) cfg2.excludeDates=[];
-  if(!cfg2.extraDates) cfg2.extraDates=[];
-  const isExc=cfg2.excludeDates.includes(dt), isExt=cfg2.extraDates.includes(dt);
-
-  if(tp==='exclude'){
-    if(isExc){
-      // 이미 제외됨 → 해제
-      cfg2.excludeDates=cfg2.excludeDates.filter(d=>d!==dt);
-    } else {
-      cfg2.excludeDates.push(dt);
-      cfg2.extraDates=cfg2.extraDates.filter(d=>d!==dt);
-    }
-  } else {
-    if(isExt){
-      cfg2.extraDates=cfg2.extraDates.filter(d=>d!==dt);
-    } else {
-      cfg2.extraDates.push(dt);
-      cfg2.excludeDates=cfg2.excludeDates.filter(d=>d!==dt);
-    }
-  }
-  sc(cfg2); renderExcCal();
-}
-
-function renderExcList(cfg2){
-  const excList=document.getElementById('excList');
-  const all=[...(cfg2.excludeDates||[]).map(d=>({d,t:'exclude'})),...(cfg2.extraDates||[]).map(d=>({d,t:'extra'}))].sort((a,b)=>a.d.localeCompare(b.d));
-  if(!all.length){excList.innerHTML='<div style="font-size:.7rem;color:var(--dim);padding:6px">선택된 날짜가 없습니다. 달력에서 날짜를 클릭하세요.</div>';return;}
-  excList.innerHTML=all.map(item=>`
-    <div class="exc-item">
-      <div class="exc-date">${item.d}</div>
-      <span class="exc-type-badge ${item.t}">${item.t==='exclude'?'❌ 제외':'✅ 추가'}</span>
-      <button class="btn-exc-rm" onclick="toggleExcDate('${item.d}')">✕</button>
-    </div>`).join('');
-}
-
-// 하위 호환: 기존 addExcDate 호출 보호
-function addExcDate(){ renderExcCal(); }
-function removeExc(dt,tp){
-  const cfg2=lc();
-  if(tp==='exclude') cfg2.excludeDates=(cfg2.excludeDates||[]).filter(d=>d!==dt);
-  else cfg2.extraDates=(cfg2.extraDates||[]).filter(d=>d!==dt);
-  sc(cfg2); renderExcCal();
-}
-
-function saveCfg(){
-  const c=lc();
-  c.gasUrl=document.getElementById('cfgGas').value.trim();
-  c.programName=document.getElementById('cfgProg').value.trim()||'MISSION';
-  c.missionName=document.getElementById('cfgMis').value.trim()||'운동장 3바퀴 완주';
-  c.lapsRequired=parseInt(document.getElementById('cfgLaps').value)||3;
-  c.achieveThreshold=parseInt(document.getElementById('cfgThresh').value)||100;
-  const wd=[];for(let i=0;i<7;i++){const el=document.getElementById('dw'+i);if(el&&el.checked)wd.push(i);}
-  c.missionWeekdays=wd;
-  // Monthly targets
-  if(!c.monthlyTargets) c.monthlyTargets={};
-  const now=new Date();
-  for(let yr=now.getFullYear()-1;yr<=now.getFullYear()+1;yr++){
-    for(let mo=1;mo<=12;mo++){
-      const key=`${yr}-${pad(mo)}`;
-      const inp=document.getElementById('mt_'+key);
-      if(inp){const v=inp.value.trim();if(v)c.monthlyTargets[key]=parseInt(v);else delete c.monthlyTargets[key];}
-    }
-  }
-  sc(c);
-  document.getElementById('ahTitle').textContent=c.programName;
-  document.getElementById('ahSub').textContent=c.missionName;
-  setSsbState(c.gasUrl?'idle':'none');
-  buildProxyCls();buildProxyLap();
-  toast('✅ 설정 저장 완료 — 동기화 버튼을 눌러 학생 앱에 반영하세요');
-}
-
-/* Classes */
-function renderClsChips(c){
-  document.getElementById('clsChips').innerHTML=(c.classes||[]).map((cl,i)=>
-    `<div class="chip">${cl}<button class="crm" onclick="rmCls(${i})">✕</button></div>`).join('');
-}
-function addCls(){
-  const name=document.getElementById('newCls').value.trim(); if(!name)return;
-  const c=lc(); if(c.classes.includes(name)){toast('이미 있는 학반','warn');return;}
-  c.classes.push(name);sc(c);document.getElementById('newCls').value='';renderClsChips(c);populateRCls(c.classes);
-}
-function rmCls(i){
-  const c=lc();if(!confirm(`"${c.classes[i]}" 삭제?`))return;
-  c.classes.splice(i,1);sc(c);renderClsChips(c);populateRCls(c.classes);
-}
-
-/* Roster */
-function populateRCls(classes){
-  const opts=classes.map(cl=>`<option value="${cl}">${cl}</option>`).join('');
-  document.getElementById('rCls').innerHTML=opts||'<option value="">학반 없음</option>';
-  document.getElementById('rBulkCls').innerHTML=opts||'<option value="">학반 없음</option>';
-}
-function renderRosterUi(c){
-  const byClass={};(c.classes||[]).forEach(cl=>{byClass[cl]=[];});
-  (c.roster||[]).forEach(s=>{if(!byClass[s.className])byClass[s.className]=[];byClass[s.className].push(s.name);});
-  let html='';
-  Object.entries(byClass).forEach(([cl,names])=>{
-    if(!names.length)return;
-    html+=`<div style="font-size:.67rem;font-weight:700;color:var(--accent);margin:7px 0 4px">${cl}</div><div style="display:flex;flex-wrap:wrap;gap:5px">`;
-    names.forEach(n=>{
-      const idx=(c.roster||[]).findIndex(s=>s.name===n&&s.className===cl);
-      html+=`<div class="chip">${n}<button class="crm" onclick="rmRoster(${idx})">✕</button></div>`;
-    });
-    html+='</div>';
-  });
-  document.getElementById('rosterUi').innerHTML=html||'<div style="font-size:.74rem;color:var(--dim);padding:6px">명단이 비어 있습니다</div>';
 }
 function addRoster(){
   const cls=document.getElementById('rCls').value,name=document.getElementById('rName').value.trim();
@@ -1782,16 +1630,188 @@ function bulkRoster(){
   const c=lc();if(!c.roster)c.roster=[];
   let added=0;
   names.forEach(name=>{if(!(c.roster||[]).find(s=>s.name===name&&s.className===cls)){c.roster.push({name,className:cls});added++;}});
-  sc(c);document.getElementById('rBulk').value='';renderRosterUi(c);toast(`✅ ${added}명이 [${cls}]에 추가되었습니다`);
+  sc(c);document.getElementById('rBulk').value='';renderRosterUi(c);toast('✅ '+added+'명이 ['+cls+']에 추가되었습니다');
 }
 function rmRoster(i){const c=lc();c.roster.splice(i,1);sc(c);renderRosterUi(c);}
+
+/* ══════════════════════════════════════════════
+   설정 저장
+══════════════════════════════════════════════ */
+function saveCfg(){
+  var c=lc();
+  c.gasUrl        = document.getElementById('cfgGas').value.trim();
+  c.programName   = document.getElementById('cfgProg').value.trim()||'MISSION';
+  c.missionName   = document.getElementById('cfgMis').value.trim()||'오늘의 미션';
+  c.achieveThreshold = parseInt(document.getElementById('cfgThresh').value)||100;
+  c.monthlyLapGoal   = parseInt(document.getElementById('cfgMonthlyLapGoal').value)||0;
+  var wd=[];
+  for(var i=0;i<7;i++){var el=document.getElementById('dw'+i);if(el&&el.checked)wd.push(i);}
+  c.missionWeekdays=wd;
+  // Monthly targets
+  if(!c.monthlyTargets) c.monthlyTargets={};
+  var now=new Date();
+  for(var yr=now.getFullYear()-1;yr<=now.getFullYear()+1;yr++){
+    for(var mo=1;mo<=12;mo++){
+      var key=yr+'-'+pad(mo);
+      var inp=document.getElementById('mt_'+key);
+      if(inp){var v=inp.value.trim();if(v) c.monthlyTargets[key]=parseInt(v);else delete c.monthlyTargets[key];}
+    }
+  }
+  sc(c);
+  document.getElementById('ahTitle').textContent=c.programName;
+  document.getElementById('ahSub').textContent=c.missionName;
+  setSsbState(c.gasUrl?'idle':'none');
+  buildProxyCls();buildProxyLap();
+  toast('✅ 설정 저장 완료 — 동기화 버튼을 눌러 학생 앱에 반영하세요');
+}
+
+/* ══════════════════════════════════════════════
+   제외/추가 날짜 달력
+══════════════════════════════════════════════ */
+var excCal = { y: new Date().getFullYear(), m: new Date().getMonth()+1 };
+
+function excPrevMonth(){ excCal.m--; if(excCal.m<1){excCal.m=12;excCal.y--;} renderExcCal(); }
+function excNextMonth(){ excCal.m++; if(excCal.m>12){excCal.m=1;excCal.y++;} renderExcCal(); }
+
+function renderExcCal(){
+  var c2=lc();
+  var y=excCal.y, m=excCal.m;
+  var days=new Date(y,m,0).getDate();
+  var fdow=new Date(y,m-1,1).getDay();
+  var excDates=c2.excludeDates||[];
+  var extDates=c2.extraDates||[];
+  var todayStr=getToday();
+  var labelEl=document.getElementById('excMonthLabel');
+  if(labelEl) labelEl.textContent=y+'년 '+m+'월';
+  var grid=document.getElementById('excCalGrid');
+  if(!grid) return;
+  var html='';
+  for(var i=0;i<fdow;i++) html+='<div></div>';
+  for(var d=1;d<=days;d++){
+    var dt=y+'-'+pad(m)+'-'+pad(d);
+    var isExc=excDates.indexOf(dt)>=0;
+    var isExt=extDates.indexOf(dt)>=0;
+    var isTod=dt===todayStr;
+    var bg='var(--card2)', col='var(--text)', bdr='1px solid var(--border)';
+    if(isExc){bg='rgba(239,71,111,.2)';col='var(--err)';bdr='1px solid rgba(239,71,111,.4)';}
+    else if(isExt){bg='rgba(6,214,160,.2)';col='var(--ok)';bdr='1px solid rgba(6,214,160,.4)';}
+    if(isTod) bdr='2px solid var(--accent)';
+    html+='<div onclick="toggleExcDate(\''+dt+'\')" style="aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.74rem;font-weight:600;cursor:pointer;background:'+bg+';color:'+col+';border:'+bdr+';transition:all .15s">'+d+'</div>';
+  }
+  grid.innerHTML=html;
+  renderExcList(c2);
+}
+
+function toggleExcDate(dt){
+  var c2=lc();
+  var tp=document.getElementById('excType').value;
+  if(!c2.excludeDates) c2.excludeDates=[];
+  if(!c2.extraDates)   c2.extraDates=[];
+  var isExc=c2.excludeDates.indexOf(dt)>=0;
+  var isExt=c2.extraDates.indexOf(dt)>=0;
+  if(tp==='exclude'){
+    if(isExc){ c2.excludeDates=c2.excludeDates.filter(function(d){return d!==dt;}); }
+    else{ c2.excludeDates.push(dt); c2.extraDates=c2.extraDates.filter(function(d){return d!==dt;}); }
+  } else {
+    if(isExt){ c2.extraDates=c2.extraDates.filter(function(d){return d!==dt;}); }
+    else{ c2.extraDates.push(dt); c2.excludeDates=c2.excludeDates.filter(function(d){return d!==dt;}); }
+  }
+  sc(c2); renderExcCal();
+}
+
+function renderExcList(c2){
+  var excList=document.getElementById('excList');
+  if(!excList) return;
+  var all=[];
+  (c2.excludeDates||[]).forEach(function(d){all.push({d:d,t:'exclude'});});
+  (c2.extraDates||[]).forEach(function(d){all.push({d:d,t:'extra'});});
+  all.sort(function(a,b){return a.d.localeCompare(b.d);});
+  if(!all.length){excList.innerHTML='<div style="font-size:.7rem;color:var(--dim);padding:6px">선택된 날짜가 없습니다. 달력에서 날짜를 클릭하세요.</div>';return;}
+  excList.innerHTML=all.map(function(item){
+    var label=item.t==='exclude'?'❌ 제외':'✅ 추가';
+    return '<div class="exc-item"><div class="exc-date">'+item.d+'</div><span class="exc-type-badge '+item.t+'">'+label+'</span><button class="btn-exc-rm" onclick="toggleExcDate(\''+item.d+'\')">✕</button></div>';
+  }).join('');
+}
+
+function addExcDate(){ renderExcCal(); }
+function removeExc(dt,tp){
+  var c2=lc();
+  if(tp==='exclude') c2.excludeDates=(c2.excludeDates||[]).filter(function(d){return d!==dt;});
+  else               c2.extraDates  =(c2.extraDates||[]).filter(function(d){return d!==dt;});
+  sc(c2); renderExcCal();
+}
+
+/* ══════════════════════════════════════════════
+   학반 / 학생 명단 관리
+══════════════════════════════════════════════ */
+function renderClsChips(c2){
+  document.getElementById('clsChips').innerHTML=(c2.classes||[]).map(function(cl,i){
+    return '<div class="chip">'+cl+'<button class="crm" onclick="rmCls('+i+')">✕</button></div>';
+  }).join('');
+}
+
+function addCls(){
+  var name=document.getElementById('newCls').value.trim(); if(!name)return;
+  var c2=lc();
+  if((c2.classes||[]).indexOf(name)>=0){toast('이미 있는 학반','warn');return;}
+  if(!c2.classes)c2.classes=[];
+  c2.classes.push(name); sc(c2);
+  document.getElementById('newCls').value='';
+  renderClsChips(c2); populateRCls(c2.classes);
+}
+
+function rmCls(i){
+  var c2=lc();
+  if(!confirm('"'+c2.classes[i]+'" 삭제?'))return;
+  c2.classes.splice(i,1); sc(c2);
+  renderClsChips(c2); populateRCls(c2.classes);
+}
+
+function populateRCls(classes){
+  var opts=(classes||[]).map(function(cl){return '<option value="'+cl+'">'+cl+'</option>';}).join('');
+  var rCls=document.getElementById('rCls');
+  var rBulk=document.getElementById('rBulkCls');
+  if(rCls)  rCls.innerHTML =opts||'<option value="">학반 없음</option>';
+  if(rBulk) rBulk.innerHTML=opts||'<option value="">학반 없음</option>';
+}
+
+function renderRosterUi(c2){
+  var byClass={};
+  (c2.classes||[]).forEach(function(cl){byClass[cl]=[];});
+  (c2.roster||[]).forEach(function(s){
+    if(!byClass[s.className]) byClass[s.className]=[];
+    byClass[s.className].push(s.name);
+  });
+  var html='';
+  Object.keys(byClass).forEach(function(cl){
+    var names=byClass[cl]; if(!names.length) return;
+    html+='<div style="font-size:.67rem;font-weight:700;color:var(--accent);margin:7px 0 4px">'+cl+'</div>';
+    html+='<div style="display:flex;flex-wrap:wrap;gap:5px">';
+    names.forEach(function(n){
+      var idx=(c2.roster||[]).findIndex(function(s){return s.name===n&&s.className===cl;});
+      html+='<div class="chip">'+n+'<button class="crm" onclick="rmRoster('+idx+')">✕</button></div>';
+    });
+    html+='</div>';
+  });
+  var el=document.getElementById('rosterUi');
+  if(el) el.innerHTML=html||'<div style="font-size:.74rem;color:var(--dim);padding:6px">명단이 비어 있습니다</div>';
+}
+
+function startPinChange(){
+  pinMode='change'; pendingPin=''; pinBuf=''; updDots();
+  document.getElementById('pinErr').textContent='';
+  document.getElementById('pinHint').textContent='';
+  document.getElementById('pinLbl').textContent='새 PIN 4자리 입력';
+  document.getElementById('scMain').style.display='none';
+  document.getElementById('scPin').style.display='flex';
+}
 
 /* ── helpers ── */
 function buildFilter(id,classes,cur,cb){
   const all=['전체',...(classes||[])];
   document.getElementById(id).innerHTML=all.map((cl,i)=>{
     const v=i===0?'__all__':cl;
-    return `<button class="cf-chip ${cur===v?'active':''}" onclick="void(0)">${cl}</button>`;
+    return '<button class="cf-chip '+(cur===v?'active':'')+' " onclick="void(0)">'+cl+'</button>';
   }).join('');
   document.querySelectorAll(`#${id} .cf-chip`).forEach((btn,i)=>{
     btn.addEventListener('click',()=>{
