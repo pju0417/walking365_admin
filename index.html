@@ -513,6 +513,25 @@ input[type=date].exc-inp::-webkit-calendar-picker-indicator{filter:invert(.6)}
       <div class="mt-grid" id="mtGrid"></div>
     </div>
 
+    <!-- 공지사항 -->
+    <div class="sset">
+      <h4>📢 학생 공지사항</h4>
+      <div style="font-size:.7rem;color:var(--dim);margin-bottom:10px;line-height:1.6">
+        학생이 앱을 열 때 팝업으로 표시됩니다. 저장 후 <strong style="color:var(--accent)">☁️ 설정 동기화</strong>를 눌러야 반영됩니다.
+      </div>
+      <div class="fl">공지 활성화</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.85rem">
+          <input type="checkbox" id="cfgNoticeActive" style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent)">
+          <span>활성화 (체크 해제 시 팝업 미표시)</span>
+        </label>
+      </div>
+      <div class="fl">공지 제목</div>
+      <input class="fi" type="text" id="cfgNoticeTitle" placeholder="예) 이번 주 공지사항" maxlength="30">
+      <div class="fl">공지 내용</div>
+      <textarea class="textarea-fi" id="cfgNoticeContent" placeholder="학생들에게 전달할 내용을 입력하세요.&#10;줄바꿈도 그대로 표시됩니다." style="height:110px"></textarea>
+    </div>
+
     <!-- Classes -->
     <div class="sset">
       <h4>🏫 학반 관리</h4>
@@ -983,7 +1002,11 @@ async function pushConfig(){
     monthlyLapGoal:c.monthlyLapGoal||0, missionWeekdays:c.missionWeekdays,
     classes:c.classes, monthlyTargets:c.monthlyTargets,
     achieveThreshold:c.achieveThreshold,
-    excludeDates:c.excludeDates||[], extraDates:c.extraDates||[]
+    excludeDates:c.excludeDates||[], extraDates:c.extraDates||[],
+    noticeActive:c.noticeActive||false,
+    noticeTitle:c.noticeTitle||'',
+    noticeContent:c.noticeContent||'',
+    noticeUpdatedAt:c.noticeUpdatedAt||0
   };
   try{
     const res=await fetch(c.gasUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'saveConfig',config:payload})});
@@ -1269,10 +1292,15 @@ let prx = { cls:'', stuList:[], laps:0 };  // stuList: 다중 선택된 학생 �
 
 function buildProxyCls(){
   const c=lc(), g=document.getElementById('prxCls');
-  if(!c.classes.length){ g.innerHTML='<div style="font-size:.76rem;color:var(--dim)">설정에서 학반을 추가하세요</div>'; return; }
-  g.innerHTML=c.classes.map(cl=>{
-    var onCls=prx.cls===cl?'on':'';
-    return '<button class="sel-b '+onCls+'" onclick="prxSelCls(\''+cl.replace(/'/g,"\\'")+'\')">' + cl + '</button>';
+  if(!c.classes||!c.classes.length){
+    g.innerHTML='<div style="font-size:.76rem;color:var(--dim)">설정에서 학반을 추가하세요</div>';
+    return;
+  }
+  const allClasses=['__all__'].concat(c.classes);
+  g.innerHTML=allClasses.map(function(cl){
+    const label=cl==='__all__'?'전체':cl;
+    const onCls=prx.cls===cl?'on':'';
+    return '<button class="sel-b '+onCls+'" onclick="prxSelCls(\''+cl.replace(/'/g,"\\'")+'\')">'+label+'</button>';
   }).join('');
 }
 
@@ -1284,42 +1312,58 @@ function prxSelCls(cls){
 function buildProxyStu(){
   const c=lc(), g=document.getElementById('prxStu');
   const bar=document.getElementById('multiSelBar');
-  if(!prx.cls){ g.innerHTML='<div style="font-size:.77rem;color:var(--dim)">먼저 학반을 선택하세요</div>'; bar.style.display='none'; return; }
-  const members=c.roster.filter(s=>s.className===prx.cls);
-  if(!members.length){ g.innerHTML='<div style="font-size:.77rem;color:var(--dim)">설정 → 학생 명단에 추가하세요</div>'; bar.style.display='none'; return; }
+  if(!prx.cls){
+    g.innerHTML='<div style="font-size:.77rem;color:var(--dim)">먼저 학반을 선택하세요</div>';
+    bar.style.display='none'; return;
+  }
+  const members = prx.cls==='__all__'
+    ? (c.roster||[])
+    : (c.roster||[]).filter(function(s){return s.className===prx.cls;});
+  if(!members.length){
+    g.innerHTML='<div style="font-size:.77rem;color:var(--dim)">설정 → 학생 명단에 추가하세요</div>';
+    bar.style.display='none'; return;
+  }
   bar.style.display='flex';
-  g.innerHTML=members.map(s=>{
-    const sel=prx.stuList.includes(s.name);
-    return '<button class="stu-b '+(sel?'on':'')+' " onclick="prxToggleStu(\''+s.name.replace(/'/g,"\\'")+'\'">'+(sel?'✓ ':'')+s.name+'</button>';
-  }).join('');
+  // 학반별 그룹핑
+  const groups={};
+  members.forEach(function(s){
+    if(!groups[s.className]) groups[s.className]=[];
+    groups[s.className].push(s);
+  });
+  let html='';
+  Object.keys(groups).forEach(function(cls){
+    if(prx.cls==='__all__'){
+      html+='<div style="width:100%;font-size:.67rem;font-weight:700;color:var(--accent);margin:8px 0 4px">'+cls+'</div>';
+    }
+    groups[cls].forEach(function(s){
+      const key=s.name+'|'+s.className;
+      const sel=prx.stuList.indexOf(key)>=0;
+      html+='<button class="stu-b '+(sel?'on':'')+' " onclick="prxToggleStu(\''+s.name.replace(/'/g,"\\'")+'\',\''+s.className.replace(/'/g,"\\'")+'\')" ><span style="font-size:.75rem">'+(sel?'\u2713 ':'')+s.name+'</span></button>';
+    });
+  });
+  g.innerHTML=html;
   const cnt=document.getElementById('multiCount');
-  cnt.textContent = prx.stuList.length > 0 ? prx.stuList.length+'명 선택됨' : '';
+  cnt.textContent=prx.stuList.length>0?prx.stuList.length+'명 선택됨':'';
 }
 
-function prxToggleStu(name){
-  const idx=prx.stuList.indexOf(name);
+function prxToggleStu(name,className){
+  const key=name+'|'+className;
+  const idx=prx.stuList.indexOf(key);
   if(idx>=0) prx.stuList.splice(idx,1);
-  else prx.stuList.push(name);
+  else prx.stuList.push(key);
   buildProxyStu(); updPrxConfirm();
 }
 
 function prxSelAll(){
   const c=lc();
-  prx.stuList=c.roster.filter(s=>s.className===prx.cls).map(s=>s.name);
+  const members=prx.cls==='__all__'?(c.roster||[]):(c.roster||[]).filter(function(s){return s.className===prx.cls;});
+  prx.stuList=members.map(function(s){return s.name+'|'+s.className;});
   buildProxyStu(); updPrxConfirm();
 }
 
 function prxSelNone(){
   prx.stuList=[];
   buildProxyStu(); updPrxConfirm();
-}
-
-function buildProxyLap(){
-  var opts=[1,2,3,4,5,6,7,8,9,10];
-  document.getElementById('prxLap').innerHTML=opts.map(function(n){
-    var selCls=prx.laps===n?'sel'+Math.min(n,3):'';
-    return '<div class="ls-b '+selCls+'" onclick="prxSelLap('+n+')" style="width:48px;height:48px;font-size:1.15rem">'+n+'<span>바퀴</span></div>';
-  }).join('');
 }
 
 function prxSelLap(n){ prx.laps=n; buildProxyLap(); updPrxConfirm(); }
@@ -1329,52 +1373,49 @@ function updPrxConfirm(){
   document.getElementById('prxConfirm').style.display=ok?'block':'none';
   document.getElementById('btnPrx').style.display=ok?'block':'none';
   if(ok){
-    const c=lc(), dt=document.getElementById('prxDate').value||getToday();
-    const names = prx.stuList.length<=3
-      ? prx.stuList.join(', ')
-      : prx.stuList.slice(0,2).join(', ') + ' 외 ' + (prx.stuList.length-2) + '명';
-    document.getElementById('prxVal').textContent =
-      '['+prx.cls+'] '+names+' · '+dt+' · '+prx.laps+'바퀴';
-    document.getElementById('btnPrx').textContent = '✅ '+prx.stuList.length+'명 대리 제출하기';
+    const dt=document.getElementById('prxDate').value||getToday();
+    const displayNames=prx.stuList.map(function(k){return k.split('|')[0];});
+    const names=displayNames.length<=3
+      ? displayNames.join(', ')
+      : displayNames.slice(0,2).join(', ')+' 외 '+(displayNames.length-2)+'명';
+    const clsLabel=prx.cls==='__all__'?'전체':prx.cls;
+    document.getElementById('prxVal').textContent='['+clsLabel+'] '+names+' · '+dt+' · '+prx.laps+'바퀴';
+    document.getElementById('btnPrx').textContent='✅ '+prx.stuList.length+'명 대리 제출하기';
   }
 }
 
 async function doProxy(){
   const c=lc();
-  if(!prx.cls || prx.stuList.length===0 || !prx.laps) return;
-  if(!c.gasUrl){ toast('⚠️ GAS URL을 설정하세요','warn'); return; }
+  if(!prx.cls||prx.stuList.length===0||!prx.laps) return;
+  if(!c.gasUrl){toast('⚠️ GAS URL을 설정하세요','warn');return;}
   const dt=document.getElementById('prxDate').value||getToday();
-  const names = prx.stuList.length<=3
-    ? prx.stuList.join(', ')
-    : prx.stuList.slice(0,2).join(', ') + ' 외 ' + (prx.stuList.length-2) + '명';
-  if(!confirm('['+prx.cls+'] '+names+'의 '+dt+' 기록을 '+prx.laps+'바퀴로 제출하시겠습니까?')) return;
-
+  const displayNames=prx.stuList.map(function(k){return k.split('|')[0];});
+  const names=displayNames.length<=3
+    ? displayNames.join(', ')
+    : displayNames.slice(0,2).join(', ')+' 외 '+(displayNames.length-2)+'명';
+  if(!confirm(names+'의 '+dt+' 기록을 '+prx.laps+'바퀴로 제출하시겠습니까?')) return;
   const btn=document.getElementById('btnPrx');
-  btn.disabled=true; btn.textContent=`0/${prx.stuList.length}명 제출 중…`;
-
+  btn.disabled=true; btn.textContent='0/'+prx.stuList.length+'명 제출 중…';
   let done=0, fail=0;
-  for(const name of prx.stuList){
+  for(let ki=0;ki<prx.stuList.length;ki++){
+    const parts=prx.stuList[ki].split('|');
+    const stuName=parts[0], stuCls=parts.slice(1).join('|')||prx.cls;
     try{
       await fetch(c.gasUrl,{method:'POST',mode:'no-cors',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({date:dt,name,className:prx.cls,
-          laps:prx.laps,
-          submittedAt:nowTime(),isProxy:true})});
+        body:JSON.stringify({date:dt,name:stuName,className:stuCls,
+          laps:prx.laps,submittedAt:nowTime(),isProxy:true})});
       done++;
-    } catch { fail++; }
+    } catch(e){fail++;}
     btn.textContent=done+'/'+prx.stuList.length+'명 제출 중…';
-    await new Promise(r=>setTimeout(r,80)); // GAS 과부하 방지
+    await new Promise(function(r){setTimeout(r,80);});
   }
-
   if(fail===0) toast('✅ '+done+'명 대리 제출 완료!');
-  else toast('⚠️ '+done+'명 성공 / '+fail+'명 실패', 'warn');
-
-  // 초기화
+  else toast('⚠️ '+done+'명 성공 / '+fail+'명 실패','warn');
   prx={cls:'',stuList:[],laps:0};
   buildProxyCls(); buildProxyStu(); buildProxyLap(); updPrxConfirm();
   btn.disabled=false; btn.textContent='✅ 대리 제출하기';
 }
-
 
 /* ══════════════════════════════════════════════
    학생 개인 기록 패널 (SDP)
@@ -1586,6 +1627,10 @@ function loadCfgForm(){
   document.getElementById('cfgMis').value=c.missionName||'';
   document.getElementById('cfgThresh').value=c.achieveThreshold||100;
   document.getElementById('cfgMonthlyLapGoal').value=c.monthlyLapGoal||0;
+  // 공지사항
+  document.getElementById('cfgNoticeActive').checked  = c.noticeActive||false;
+  document.getElementById('cfgNoticeTitle').value     = c.noticeTitle||'';
+  document.getElementById('cfgNoticeContent').value   = c.noticeContent||'';
   var wd=c.missionWeekdays||[1,2,3,4,5];
   for(var i=0;i<7;i++){var el=document.getElementById('dw'+i);if(el)el.checked=wd.includes(i);}
   // Exception dates
@@ -1644,6 +1689,11 @@ function saveCfg(){
   c.missionName   = document.getElementById('cfgMis').value.trim()||'오늘의 미션';
   c.achieveThreshold = parseInt(document.getElementById('cfgThresh').value)||100;
   c.monthlyLapGoal   = parseInt(document.getElementById('cfgMonthlyLapGoal').value)||0;
+  // 공지사항
+  c.noticeActive  = document.getElementById('cfgNoticeActive').checked;
+  c.noticeTitle   = document.getElementById('cfgNoticeTitle').value.trim();
+  c.noticeContent = document.getElementById('cfgNoticeContent').value.trim();
+  if(c.noticeActive) c.noticeUpdatedAt = Date.now();  // 새 공지 시 학생 스킵 초기화용
   var wd=[];
   for(var i=0;i<7;i++){var el=document.getElementById('dw'+i);if(el&&el.checked)wd.push(i);}
   c.missionWeekdays=wd;
