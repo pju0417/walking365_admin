@@ -318,7 +318,7 @@ input[type=date].exc-inp::-webkit-calendar-picker-indicator{filter:invert(.6)}
     </div>
     <div style="display:flex;gap:6px">
       <button class="btn-sync-all" id="btnGlobalRefresh" onclick="globalRefresh()" style="background:rgba(6,214,160,.18);border:1px solid rgba(6,214,160,.35);color:var(--ok)">🔄 전체 새로고침</button>
-      <button class="btn-sync-all" id="btnTestConn" onclick="testConnection()" style="background:rgba(78,168,222,.15);border:1px solid rgba(78,168,222,.3);color:var(--accent)">🔌 연결 테스트</button>
+      <button class="btn-sync-all" id="btnPullCfg" onclick="pullConfig()" style="background:rgba(255,209,102,.15);border:1px solid rgba(255,209,102,.35);color:var(--a2)">📥 설정 불러오기</button>
       <button class="btn-sync-all" id="btnSyncAll" onclick="pushConfig()">☁️ 설정 동기화</button>
     </div>
   </div>
@@ -403,7 +403,13 @@ input[type=date].exc-inp::-webkit-calendar-picker-indicator{filter:invert(.6)}
 
       <div style="display:flex;gap:7px;margin-bottom:12px">
         <button onclick="testConnectionFromSettings()" style="flex:1;background:linear-gradient(135deg,rgba(6,214,160,.2),rgba(6,214,160,.08));border:1px solid rgba(6,214,160,.35);color:var(--ok);border-radius:var(--Rs);padding:10px;font-family:'Noto Sans KR',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .2s" id="btnTestSettings">🔌 연결 테스트</button>
+        <button onclick="pullConfig()" style="flex:1;background:linear-gradient(135deg,rgba(255,209,102,.2),rgba(255,209,102,.08));border:1px solid rgba(255,209,102,.35);color:var(--a2);border-radius:var(--Rs);padding:10px;font-family:'Noto Sans KR',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .2s">📥 설정 불러오기</button>
         <button onclick="saveAndSync()" style="flex:1;background:linear-gradient(135deg,var(--accent),#3d9fd0);border:none;color:#fff;border-radius:var(--Rs);padding:10px;font-family:'Noto Sans KR',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .2s">💾 저장 후 동기화</button>
+      </div>
+      <div style="background:rgba(255,209,102,.07);border:1px solid rgba(255,209,102,.2);border-radius:var(--Rs);padding:10px 13px;margin-bottom:12px;font-size:.7rem;color:var(--dim);line-height:1.7">
+        <strong style="color:var(--a2)">💡 다른 기기에서 사용할 때</strong><br>
+        GAS URL을 입력하고 <strong style="color:#fff">📥 설정 불러오기</strong>를 누르면<br>
+        기존에 저장한 학반·학생 명단·미션 설정이 모두 복원됩니다.
       </div>
 
       <div class="code-block" id="gasCode"></div>
@@ -1006,7 +1012,8 @@ async function pushConfig(){
     noticeActive:c.noticeActive||false,
     noticeTitle:c.noticeTitle||'',
     noticeContent:c.noticeContent||'',
-    noticeUpdatedAt:c.noticeUpdatedAt||0
+    noticeUpdatedAt:c.noticeUpdatedAt||0,
+    roster:c.roster||[]
   };
   try{
     const res=await fetch(c.gasUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'saveConfig',config:payload})});
@@ -1021,6 +1028,66 @@ async function pushConfig(){
    fetch()는 기본적으로 redirect:follow 이므로 정상 동작하지만,
    타임아웃과 에러 메시지를 강화함.
 ══════════════════════════════════════════════ */
+/* ── 구글 시트에서 설정 불러오기 (다른 PC 접속 시) ── */
+async function pullConfig(){
+  const url = document.getElementById('cfgGas')
+    ? document.getElementById('cfgGas').value.trim() || lc().gasUrl
+    : lc().gasUrl;
+  if(!url){ toast('⚠️ GAS URL을 먼저 입력하세요','warn'); return; }
+
+  if(!confirm('구글 시트에 저장된 설정을 불러옵니다.\n현재 이 기기의 설정은 덮어쓰기 됩니다.\n\n계속하시겠습니까?')) return;
+
+  setSsbState('syn');
+  document.getElementById('ssbText').textContent = '설정 불러오는 중…';
+
+  try{
+    const json = await gasGet(url, { action:'config' });
+    const remote = json.config || {};
+
+    if(!remote.programName && !remote.classes){
+      setSsbState('err');
+      toast('⚠️ 구글 시트에 저장된 설정이 없습니다','warn');
+      return;
+    }
+
+    // 로컬 설정에 병합 (PIN과 gasUrl은 기기별로 유지)
+    const c = lc();
+    c.gasUrl          = url;
+    c.programName     = remote.programName     || c.programName;
+    c.missionName     = remote.missionName     || c.missionName;
+    c.monthlyLapGoal  = Number(remote.monthlyLapGoal)   || 0;
+    c.achieveThreshold= Number(remote.achieveThreshold) || 100;
+    c.missionWeekdays = Array.isArray(remote.missionWeekdays) ? remote.missionWeekdays : c.missionWeekdays;
+    c.classes         = Array.isArray(remote.classes)         ? remote.classes         : c.classes;
+    c.monthlyTargets  = (remote.monthlyTargets && typeof remote.monthlyTargets==='object') ? remote.monthlyTargets : {};
+    c.excludeDates    = Array.isArray(remote.excludeDates)    ? remote.excludeDates    : [];
+    c.extraDates      = Array.isArray(remote.extraDates)      ? remote.extraDates      : [];
+    c.noticeActive    = remote.noticeActive === true || remote.noticeActive === 'true';
+    c.noticeTitle     = remote.noticeTitle   || '';
+    c.noticeContent   = remote.noticeContent || '';
+    c.noticeUpdatedAt = Number(remote.noticeUpdatedAt) || 0;
+    if(Array.isArray(remote.roster)) c.roster = remote.roster;
+
+    sc(c);
+
+    // 화면 갱신
+    document.getElementById('ahTitle').textContent = c.programName || '미션 관리자';
+    document.getElementById('ahSub').textContent   = c.missionName || '교사용 관리 시스템';
+    loadCfgForm();
+    buildProxyCls(); buildProxyStu(); buildProxyLap();
+
+    setSsbState('ok');
+    document.getElementById('ssbText').textContent = '✅ 설정 불러오기 완료';
+    toast('✅ 구글 시트에서 설정을 불러왔습니다');
+    setTimeout(()=>setSsbState('idle'), 4000);
+
+  } catch(e){
+    setSsbState('err');
+    document.getElementById('ssbText').textContent = '❌ ' + e.message;
+    toast('❌ 불러오기 실패','warn');
+  }
+}
+
 async function gasGet(url, params, timeoutMs) {
   if (!url) throw new Error('GAS URL이 설정되지 않았습니다. 설정 탭에서 URL을 입력하세요.');
   timeoutMs = timeoutMs || 15000;
