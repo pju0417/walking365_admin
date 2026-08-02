@@ -1433,6 +1433,14 @@ function prxSelNone(){
   buildProxyStu(); updPrxConfirm();
 }
 
+function buildProxyLap(){
+  const opts=[1,2,3,4,5,6,7,8,9,10];
+  document.getElementById('prxLap').innerHTML=opts.map(function(n){
+    const selCls=prx.laps===n?'sel'+Math.min(n,3):'';
+    return '<div class="ls-b '+selCls+'" onclick="prxSelLap('+n+')" style="width:48px;height:48px;font-size:1.15rem">'+n+'<span>바퀴</span></div>';
+  }).join('');
+}
+
 function prxSelLap(n){ prx.laps=n; buildProxyLap(); updPrxConfirm(); }
 
 function updPrxConfirm(){
