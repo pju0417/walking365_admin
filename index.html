@@ -252,6 +252,16 @@ input[type=date].exc-inp::-webkit-calendar-picker-indicator{filter:invert(.6)}
 /* QR Modal */
 .qr-modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);z-index:900;align-items:center;justify-content:center;padding:24px}
 .qr-modal-ov.on{display:flex}
+
+/* 진급/졸업 패널 */
+.pg-row{background:var(--card);border:1px solid var(--border);border-radius:var(--Rs);padding:12px 13px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pg-name{font-size:.86rem;font-weight:700}
+.pg-count{font-size:.68rem;color:var(--dim);margin-top:2px}
+.pg-btns{display:flex;gap:6px;flex-shrink:0}
+.btn-pg-promote{background:rgba(78,168,222,.15);border:1px solid rgba(78,168,222,.35);color:var(--accent);border-radius:8px;padding:7px 11px;font-family:'Noto Sans KR',sans-serif;font-size:.74rem;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap}
+.btn-pg-promote:hover{background:rgba(78,168,222,.25)}
+.btn-pg-graduate{background:rgba(239,71,111,.12);border:1px solid rgba(239,71,111,.3);color:var(--err);border-radius:8px;padding:7px 11px;font-family:'Noto Sans KR',sans-serif;font-size:.74rem;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap}
+.btn-pg-graduate:hover{background:rgba(239,71,111,.2)}
 .qr-modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--R);padding:28px 24px;width:100%;max-width:340px;text-align:center}
 .qr-modal-title{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:2px;color:var(--accent);margin-bottom:4px}
 .qr-modal-sub{font-size:.7rem;color:var(--dim);margin-bottom:20px;line-height:1.5}
@@ -546,6 +556,22 @@ input[type=date].exc-inp::-webkit-calendar-picker-indicator{filter:invert(.6)}
         <button class="btn-add" onclick="addCls()">추가</button>
       </div>
       <div class="chip-list" id="clsChips"></div>
+      <button onclick="openPromoteGraduate()" style="width:100%;background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.3);color:var(--a2);border-radius:var(--Rs);padding:10px;font-family:'Noto Sans KR',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer;margin-top:8px;transition:all .2s">🎓 학년말 진급·졸업 처리</button>
+    </div>
+
+    <!-- 진급/졸업 패널 -->
+    <div class="qr-modal-ov" id="pgOv">
+      <div class="qr-modal" style="max-width:400px;text-align:left;max-height:85vh;overflow-y:auto">
+        <div class="qr-modal-title" style="text-align:center">🎓 학년말 진급·졸업</div>
+        <div style="font-size:.7rem;color:var(--dim);line-height:1.7;margin-bottom:14px;background:rgba(255,209,102,.07);border:1px solid rgba(255,209,102,.2);border-radius:var(--Rs);padding:10px 12px">
+          <strong style="color:var(--a2)">진급</strong>: 학반 이름을 새 이름으로 변경 (예: 3학년1반 → 4학년1반)<br>
+          <strong style="color:var(--err)">졸업</strong>: 학반과 소속 학생을 명단에서 삭제<br><br>
+          ⚠️ 지난 기록은 구글 시트에 날짜별로 그대로 보존됩니다.<br>
+          ⚠️ 처리 후 <strong style="color:#fff">☁️ 설정 동기화</strong>를 눌러야 학생 앱에 반영되며, 각 학생은 앱에서 <strong style="color:#fff">로그아웃 → 새 학반 선택</strong>을 해야 합니다.
+        </div>
+        <div id="pgList"></div>
+        <button class="btn-qr-cl" style="width:100%;margin-top:8px" onclick="closePromoteGraduate()">닫기</button>
+      </div>
     </div>
 
     <!-- Roster -->
@@ -1892,6 +1918,92 @@ function rmCls(i){
   renderClsChips(c2); populateRCls(c2.classes);
 }
 
+/* ══════════════════════════════════════════════
+   학년말 진급 · 졸업 처리
+══════════════════════════════════════════════ */
+function openPromoteGraduate(){
+  renderPGList();
+  document.getElementById('pgOv').classList.add('on');
+}
+function closePromoteGraduate(){
+  document.getElementById('pgOv').classList.remove('on');
+}
+
+function renderPGList(){
+  var c2=lc();
+  var classes=c2.classes||[];
+  var list=document.getElementById('pgList');
+  if(!classes.length){
+    list.innerHTML='<div style="font-size:.76rem;color:var(--dim);padding:10px 0">등록된 학반이 없습니다.</div>';
+    return;
+  }
+  var html='';
+  classes.forEach(function(cl){
+    var cnt=(c2.roster||[]).filter(function(s){return s.className===cl;}).length;
+    html+='<div class="pg-row">'
+      +'<div><div class="pg-name">'+cl+'</div><div class="pg-count">학생 '+cnt+'명</div></div>'
+      +'<div class="pg-btns">'
+        +'<button class="btn-pg-promote" onclick="promoteClass(\''+cl.replace(/'/g,"\\'")+'\')">진급 →</button>'
+        +'<button class="btn-pg-graduate" onclick="graduateClass(\''+cl.replace(/'/g,"\\'")+'\')">졸업</button>'
+      +'</div>'
+    +'</div>';
+  });
+  list.innerHTML=html;
+}
+
+function promoteClass(oldCls){
+  var newName=prompt('"'+oldCls+'" 학생들을 진급시킬 새 학반 이름을 입력하세요.\n예) 3학년 1반 → 4학년 1반', oldCls);
+  if(newName===null) return;
+  newName=newName.trim();
+  if(!newName){ toast('학반 이름을 입력하세요','warn'); return; }
+
+  var c2=lc();
+  if(newName!==oldCls && (c2.classes||[]).indexOf(newName)>=0){
+    if(!confirm('"'+newName+'" 학반이 이미 존재합니다. 두 학반을 합치시겠습니까?')) return;
+  }
+
+  // roster의 className 일괄 변경
+  (c2.roster||[]).forEach(function(s){
+    if(s.className===oldCls) s.className=newName;
+  });
+  // classes 목록 갱신 (중복 제거)
+  var idx=c2.classes.indexOf(oldCls);
+  if(idx>=0){
+    if(c2.classes.indexOf(newName)>=0 && newName!==oldCls){
+      c2.classes.splice(idx,1); // 이미 있으면 기존 학반명만 제거(합치기)
+    } else {
+      c2.classes[idx]=newName;
+    }
+  }
+  sc(c2);
+
+  renderClsChips(c2); populateRCls(c2.classes); renderRosterUi(c2);
+  buildProxyCls(); buildProxyStu();
+  // 필터가 이제 없는 학반을 가리키면 전체로 리셋
+  if(todayFilter===oldCls) todayFilter='__all__';
+  if(mFilter===oldCls) mFilter='__all__';
+  renderPGList();
+  toast('✅ "'+oldCls+'" → "'+newName+'" 진급 처리 완료. 설정 동기화를 눌러주세요.');
+}
+
+function graduateClass(cls){
+  var c2=lc();
+  var cnt=(c2.roster||[]).filter(function(s){return s.className===cls;}).length;
+  if(!confirm('"'+cls+'" 학반을 졸업 처리합니다.\n소속 학생 '+cnt+'명이 명단에서 삭제됩니다.\n\n(구글 시트의 지난 기록은 삭제되지 않습니다)\n\n계속하시겠습니까?')) return;
+
+  c2.roster=(c2.roster||[]).filter(function(s){return s.className!==cls;});
+  var idx=c2.classes.indexOf(cls);
+  if(idx>=0) c2.classes.splice(idx,1);
+  sc(c2);
+
+  renderClsChips(c2); populateRCls(c2.classes); renderRosterUi(c2);
+  buildProxyCls(); buildProxyStu();
+  if(todayFilter===cls) todayFilter='__all__';
+  if(mFilter===cls) mFilter='__all__';
+  renderPGList();
+  toast('🎓 "'+cls+'" 졸업 처리 완료. 설정 동기화를 눌러주세요.');
+}
+
 function populateRCls(classes){
   var opts=(classes||[]).map(function(cl){return '<option value="'+cl+'">'+cl+'</option>';}).join('');
   var rCls=document.getElementById('rCls');
@@ -2011,6 +2123,10 @@ function loadScriptT(src) {
 
 document.getElementById('qrModalOv').addEventListener('click', e => {
   if (e.target === document.getElementById('qrModalOv')) closeQRModal();
+});
+
+document.getElementById('pgOv').addEventListener('click', function(e){
+  if (e.target === document.getElementById('pgOv')) closePromoteGraduate();
 });
 
 let toastT;
